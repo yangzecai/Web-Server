@@ -7,8 +7,8 @@ project("WebServer")
 set(CMAKE_BUILD_TYPE "Debug")
 
 # 编译参数
-set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -lpthread -O0 -Wall -g -ggdb -std=c++17")
-set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -lpthread -O3 -Wall -std=c++17")
+set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -pthread -O0 -Wall -g -ggdb -std=c++17")
+set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -pthread -O3 -Wall -std=c++17")
 
 # 设置可执行文件生成路径
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
