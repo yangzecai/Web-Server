@@ -1,25 +1,30 @@
-#pragma once
+// #pragma once
 
-#include <thread>
+// #include <memory>
+// #include <thread>
 
-class EventLoop {
-public:
-    EventLoop();
-    ~EventLoop();
+// class Poller;
 
-    EventLoop(const EventLoop &) = delete;
-    EventLoop &operator=(const EventLoop &) = delete;
+// class EventLoop {
+// public:
+//     EventLoop();
+//     ~EventLoop();
 
-    bool isInOwningThread() { return threadId_ == std::this_thread::get_id(); }
-    void assertInOwningThread();
+//     EventLoop(const EventLoop&) = delete;
+//     EventLoop& operator=(const EventLoop&) = delete;
 
-    void loop();
+//     bool isInOwningThread() { return threadId_ == std::this_thread::get_id(); }
+//     void assertInOwningThread();
 
-private:
-    std::thread::id threadId_;
-    bool isLooping_;
-    static thread_local EventLoop *loopInThisThread_;
+//     void loop();
 
-    void abortNotInOwningThread();
-    void abortNotUniqueLoopInThisThread();
-};
+// private:
+//     std::thread::id threadId_;
+//     bool isLooping_;
+//     std::unique_ptr<Poller> poller_;
+
+//     static thread_local EventLoop* loopInThisThread_;
+
+//     void abortNotInOwningThread();
+//     void abortNotUniqueLoopInThisThread();
+// };

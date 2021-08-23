@@ -1,0 +1,22 @@
+// #include "EventLoop.h"
+
+// #include <iostream>
+// #include <thread>
+
+// EventLoop loop;
+
+// void func(void)
+// {
+//     std::cout << "thread" << std::this_thread::get_id() << ":" << std::endl;
+//     loop.loop();
+// }
+
+// int main()
+// {
+//     std::thread t(func);
+//     // func();
+
+//     t.join();
+
+//     return 0;
+// }

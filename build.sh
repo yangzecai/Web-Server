@@ -1,5 +1,9 @@
 CUR_DIR="$( cd "$( dirname "$0"  )" && pwd  )"
 cd ${CUR_DIR}
+
+if [ ! -d "build" ]; then
+    mkdir build
+fi
 cd build/
 cmake ..
 
