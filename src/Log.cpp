@@ -66,7 +66,6 @@ std::string Formater::format(Event::ptr event)
     event_ = event;
     ss_.str("");
 
-    // FIXME : 格式未完善
     ss_ << time() << ' ' << level() << ' ' << threadId() << ' ' << file() << ':'
         << line() << " " << message() << "\n";
     return ss_.str();
@@ -84,8 +83,16 @@ Manager::Manager()
 {
 }
 
+Manager::~Manager()
+{
+    if (!stop_) {
+        stop();
+    }
+}
+
 void Manager::start()
 {
+    assert(!isStopped());
     logThread_ = std::thread([this]() {
         while (!this->isStopped()) {
             this->handleEvent();
@@ -95,6 +102,7 @@ void Manager::start()
 
 void Manager::stop()
 {
+    assert(!isInLogThread());
     receiveEvent(nullptr);
     logThread_.join();
     appender_->flush();
@@ -102,6 +110,7 @@ void Manager::stop()
 
 void Manager::receiveEvent(Event::ptr event)
 {
+    assert(!isInLogThread());
     std::lock_guard<std::mutex> lock(mutex_);
     eventQueue_.push(std::move(event));
     notEmpty_.notify_one();
@@ -116,12 +125,19 @@ void Manager::handleEvent()
         }
     }
     auto event = std::move(eventQueue_.front());
-    if (event == nullptr) {
+    eventQueue_.pop();
+
+    if (event == nullptr) { // 正常退出
         stop_ = true;
         return;
     }
-    eventQueue_.pop();
+
     appender_->append(formater_->format(event));
+
+    if (event->level == FATAL) { // 异常退出
+        appender_->flush();
+        abort();
+    }
 }
 
 } // namespace log

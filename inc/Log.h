@@ -119,7 +119,7 @@ public:
 class Manager {
 public:
     Manager();
-    ~Manager() { stop(); }
+    ~Manager();
 
     Manager(const Manager&) = delete;
     Manager& operator=(const Manager&) = delete;
@@ -132,6 +132,10 @@ public:
     void stop();
 
     bool isStopped() const { return stop_; }
+    bool isInLogThread() const
+    {
+        std::this_thread::get_id() == logThread_.get_id();
+    }
     void receiveEvent(Event::ptr event);
     void handleEvent();
 
