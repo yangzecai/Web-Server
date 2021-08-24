@@ -2,25 +2,16 @@
 
 #include <chrono>
 #include <iostream>
-#include <memory>
 
 namespace log {
 
 Manager manager;
 thread_local std::stringstream Logger::ss_;
 
-std::uint64_t getTimestamp()
-{
-    using namespace std::chrono;
-    return duration_cast<microseconds>(
-               high_resolution_clock::now().time_since_epoch())
-        .count();
-}
-
 Logger::Logger(const std::string& fileName, int line, Level level)
-    : event_(std::make_shared<Event>(
-          Event{fileName, line, level, getTimestamp(),
-                std::this_thread::get_id(), std::string()}))
+    : event_(std::make_shared<Event>(Event{
+          fileName, line, level, std::chrono::high_resolution_clock::now(),
+          std::this_thread::get_id(), std::string()}))
 {
 }
 
@@ -39,10 +30,13 @@ Formater::Formater()
 
 auto Formater::time()
 {
+    using namespace std::chrono;
     static const int kMicroPerSec = 1000000;
     static char timeStr[32];
-    time_t seconds = event_->time / kMicroPerSec;
-    uint64_t micros = event_->time % kMicroPerSec;
+    uint64_t time =
+        duration_cast<microseconds>(event_->time.time_since_epoch()).count();
+    time_t seconds = time / kMicroPerSec;
+    uint64_t micros = time % kMicroPerSec;
     std::strftime(timeStr, 32, "%Y-%m-%d %T.", std::localtime(&seconds));
     std::snprintf(timeStr + 20, 7, "%06lu", micros);
     return timeStr;
@@ -71,8 +65,6 @@ std::string Formater::format(Event::ptr event)
     return ss_.str();
 }
 
-void StdoutAppender::append(const std::string& fmtLog) { std::cout << fmtLog; }
-
 Manager::Manager()
     : logThread_()
     , formater_(std::make_unique<Formater>())
@@ -80,6 +72,8 @@ Manager::Manager()
     , eventQueue_()
     , level_(INFO)
     , stop_(false)
+    , nextFlushTime_(std::chrono::high_resolution_clock::now() +
+                     std::chrono::seconds(3))
 {
 }
 
@@ -118,10 +112,16 @@ void Manager::receiveEvent(Event::ptr event)
 
 void Manager::handleEvent()
 {
+    assert(isInLogThread());
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        while (eventQueue_.empty()) {
-            notEmpty_.wait(lock);
+        if (eventQueue_.empty()) {
+            auto status = notEmpty_.wait_until(lock, nextFlushTime_);
+            if (status == std::cv_status::timeout) {
+                appender_->flush();
+                nextFlushTime_ += std::chrono::seconds(3);
+                return;
+            }
         }
     }
     auto event = std::move(eventQueue_.front());
@@ -133,11 +133,27 @@ void Manager::handleEvent()
     }
 
     appender_->append(formater_->format(event));
-
-    if (event->level == FATAL) { // 异常退出
+    if (event->level == FATAL) {
         appender_->flush();
         abort();
     }
+    if (event->time > nextFlushTime_) {
+        appender_->flush();
+        nextFlushTime_ += std::chrono::seconds(3);
+    }
 }
+
+inline void StdoutAppender::append(const std::string& log) { std::cout << log; }
+inline void StdoutAppender::flush() { std::cout << std::flush; }
+
+FileAppender::FileAppender()
+    : Appender()
+    , fs_("/home/yangzecai/Projects/Web-Server/tmp")
+{
+    std::cout << fs_.is_open() << std::endl;
+}
+
+void FileAppender::append(const std::string& log) { fs_ << log; }
+inline void FileAppender::flush() { fs_ << std::flush; }
 
 } // namespace log

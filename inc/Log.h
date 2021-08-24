@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -8,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <fstream>
 
 #include <assert.h>
 #include <ctime>
@@ -46,7 +48,7 @@ struct Event {
     std::string file;
     int line;
     Level level;
-    uint64_t time;
+    std::chrono::time_point<std::chrono::high_resolution_clock> time;
     std::thread::id treadId;
     std::string message;
 };
@@ -104,18 +106,6 @@ public:
     virtual void flush() = 0;
 };
 
-class StdoutAppender : public Appender {
-public:
-    StdoutAppender()
-        : Appender()
-    {
-    }
-    ~StdoutAppender() {}
-
-    void append(const std::string& fmtLog) override;
-    void flush() override {}
-};
-
 class Manager {
 public:
     Manager();
@@ -124,7 +114,7 @@ public:
     Manager(const Manager&) = delete;
     Manager& operator=(const Manager&) = delete;
 
-    void setAppender(Appender::ptr apd) { appender_.reset(apd.release()); }
+    void setAppender(Appender* apd) { appender_.reset(apd); }
     void setLevel(Level level) { level_ = level; }
     Level getLevel() const { return level_; }
 
@@ -134,7 +124,7 @@ public:
     bool isStopped() const { return stop_; }
     bool isInLogThread() const
     {
-        std::this_thread::get_id() == logThread_.get_id();
+        return std::this_thread::get_id() == logThread_.get_id();
     }
     void receiveEvent(Event::ptr event);
     void handleEvent();
@@ -148,6 +138,31 @@ private:
     mutable std::condition_variable notEmpty_;
     Level level_;
     bool stop_;
+    std::chrono::time_point<std::chrono::high_resolution_clock> nextFlushTime_;
+};
+
+class StdoutAppender : public Appender {
+public:
+    StdoutAppender()
+        : Appender()
+    {
+    }
+    ~StdoutAppender() {}
+
+    void append(const std::string& log) override;
+    void flush() override;
+};
+
+class FileAppender : public Appender {
+public:
+    FileAppender();
+    ~FileAppender() {}
+
+    void append(const std::string& log) override;
+    void flush() override;
+
+private:
+    std::ofstream fs_;
 };
 
 } // namespace log
