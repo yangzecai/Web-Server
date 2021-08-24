@@ -11,7 +11,7 @@ thread_local std::stringstream Logger::ss_;
 Logger::Logger(const std::string& fileName, int line, Level level)
     : event_(std::make_shared<Event>(Event{
           fileName, line, level, std::chrono::high_resolution_clock::now(),
-          std::this_thread::get_id(), std::string()}))
+          std::this_thread::get_id(), std::string(), std::string()}))
 {
 }
 
@@ -41,7 +41,7 @@ auto Formater::time()
     std::snprintf(timeStr + 20, 7, "%06lu", micros);
     return timeStr;
 }
-auto Formater::file()
+inline auto Formater::file()
 {
     return event_->file.substr(event_->file.rfind('/') + 1);
 }
@@ -55,14 +55,14 @@ inline auto Formater::level()
 inline auto Formater::threadId() { return event_->treadId; }
 inline auto Formater::message() { return event_->message; }
 
-std::string Formater::format(Event::ptr event)
+void Formater::format(Event::ptr event)
 {
     event_ = event;
     ss_.str("");
 
     ss_ << time() << ' ' << level() << ' ' << threadId() << ' ' << file() << ':'
         << line() << " " << message() << "\n";
-    return ss_.str();
+    event->fmtLog = std::move(ss_.str());
 }
 
 Manager::Manager()
@@ -132,7 +132,8 @@ void Manager::handleEvent()
         return;
     }
 
-    appender_->append(formater_->format(event));
+    formater_->format(event);
+    appender_->append(event);
     if (event->level == FATAL) {
         appender_->flush();
         abort();
@@ -143,17 +144,73 @@ void Manager::handleEvent()
     }
 }
 
-inline void StdoutAppender::append(const std::string& log) { std::cout << log; }
-inline void StdoutAppender::flush() { std::cout << std::flush; }
-
-FileAppender::FileAppender()
-    : Appender()
-    , fs_("/home/yangzecai/Projects/Web-Server/tmp")
+inline void StdoutAppender::append(Event::ptr event)
 {
-    std::cout << fs_.is_open() << std::endl;
+    assert(!event->fmtLog.empty());
+    std::cout << event->fmtLog;
 }
 
-void FileAppender::append(const std::string& log) { fs_ << log; }
+inline void StdoutAppender::flush() { std::cout << std::flush; }
+
+FileAppender::FileAppender(const std::string& baseFileName)
+    : Appender()
+    , fs_()
+    , baseFileName_(baseFileName)
+    , writtenBytes_(0)
+    , nextRollFileTime_(getTomorrowZeroTime())
+{
+    fs_.open(getLogFileName());
+}
+
+void FileAppender::append(Event::ptr event)
+{
+    assert(!event->fmtLog.empty());
+    fs_ << event->fmtLog;
+    writtenBytes_ += event->fmtLog.size();
+    if (event->time > nextRollFileTime_) {
+        rollFile();
+        nextRollFileTime_ += std::chrono::hours(24);
+    }
+    if (writtenBytes_ >= kMaxWrittenBytes_) {
+        rollFile();
+    }
+}
+
 inline void FileAppender::flush() { fs_ << std::flush; }
+
+TimePoint FileAppender::getTomorrowZeroTime()
+{
+    using namespace std::chrono;
+    static const int kSecPerDay = 24 * 60 * 60;
+    std::time_t now = std::time(NULL);
+    now = now / kSecPerDay * kSecPerDay + kSecPerDay;
+    return high_resolution_clock::from_time_t(now);
+}
+
+std::string FileAppender::getLogFileName() const
+{
+    using namespace std::chrono;
+    static const int kMicroPerSec = 1000000;
+    uint64_t time = duration_cast<microseconds>(
+                        high_resolution_clock::now().time_since_epoch())
+                        .count();
+    time_t seconds = time / kMicroPerSec;
+    char timeStr[32];
+    std::strftime(timeStr, 32, "-%Y%m%d-%H%M%S", std::localtime(&seconds));
+
+    std::string fileName;
+    fileName.reserve(64);
+    fileName += baseFileName_;
+    fileName += timeStr;
+    fileName += ".log";
+    return fileName;
+}
+
+void FileAppender::rollFile()
+{
+    fs_.close();
+    fs_.open(getLogFileName());
+    writtenBytes_ = 0;
+}
 
 } // namespace log

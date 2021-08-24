@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <fstream>
 #include <memory>
 #include <mutex>
 #include <ostream>
@@ -9,7 +10,6 @@
 #include <sstream>
 #include <string>
 #include <thread>
-#include <fstream>
 
 #include <assert.h>
 #include <ctime>
@@ -28,6 +28,8 @@
 #define LOG_FATAL log::Logger(__FILE__, __LINE__, log::FATAL).getStream()
 
 namespace log {
+
+using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 class Manager;
 extern Manager manager;
@@ -48,9 +50,10 @@ struct Event {
     std::string file;
     int line;
     Level level;
-    std::chrono::time_point<std::chrono::high_resolution_clock> time;
+    TimePoint time;
     std::thread::id treadId;
     std::string message;
+    std::string fmtLog;
 };
 
 class Logger {
@@ -78,7 +81,7 @@ public:
     Formater(const Formater&) = delete;
     Formater& operator=(const Formater&) = delete;
 
-    std::string format(Event::ptr event);
+    void format(Event::ptr event);
 
 private:
     Event::ptr event_;
@@ -102,7 +105,7 @@ public:
     Appender(const Appender&) = delete;
     Appender& operator=(const Appender&) = delete;
 
-    virtual void append(const std::string& fmtLog) = 0;
+    virtual void append(Event::ptr event) = 0;
     virtual void flush() = 0;
 };
 
@@ -149,20 +152,28 @@ public:
     }
     ~StdoutAppender() {}
 
-    void append(const std::string& log) override;
+    void append(Event::ptr event) override;
     void flush() override;
 };
 
 class FileAppender : public Appender {
 public:
-    FileAppender();
+    FileAppender(const std::string& baseFileName);
     ~FileAppender() {}
 
-    void append(const std::string& log) override;
+    void append(Event::ptr event) override;
     void flush() override;
 
 private:
     std::ofstream fs_;
+    const std::string baseFileName_;
+    int writtenBytes_;
+    TimePoint nextRollFileTime_;
+    static const int kMaxWrittenBytes_ = 10 * 1024 * 1024;
+
+    TimePoint getTomorrowZeroTime();
+    std::string getLogFileName() const;
+    void rollFile();
 };
 
 } // namespace log
