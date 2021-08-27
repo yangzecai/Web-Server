@@ -1,53 +1,47 @@
-// #include "EventLoop.h"
-// #include "Poller.h"
+#include "EventLoop.h"
+#include "Log.h"
+#include "Poller.h"
 
-// #include <chrono>
-// #include <iostream>
+#include <chrono>
+#include <iostream>
 
-// #include <assert.h>
+#include <assert.h>
 
-// thread_local EventLoop* EventLoop::loopInThisThread_ = nullptr;
+thread_local EventLoop* EventLoop::loopInThisThread_ = nullptr;
 
-// EventLoop::EventLoop()
-//     : threadId_(std::this_thread::get_id())
-//     , isLooping_(false)
-//     , poller_(new Poller())
-// {
-//     if (loopInThisThread_ == nullptr) {
-//         loopInThisThread_ = this;
-//     } else {
-//         abortNotUniqueLoopInThisThread();
-//     }
-// }
+EventLoop::EventLoop()
+    : threadId_(std::this_thread::get_id())
+    , isLooping_(false)
+    , poller_(new Poller())
+{
+    LOG_TRACE << "EventLoop is created";
+    if (loopInThisThread_ != nullptr) {
+        LOG_FATAL << "Another EventLoop " << loopInThisThread_
+                  << " exists in this thread";
+    }
+    loopInThisThread_ = this;
+}
 
-// EventLoop::~EventLoop() {}
+EventLoop::~EventLoop() {}
 
-// inline void EventLoop::assertInOwningThread()
-// {
-//     if (!isInOwningThread()) {
-//         abortNotInOwningThread();
-//     }
-// }
+void EventLoop::loop()
+{
+    assert(isLooping_ == false);
+    assertInOwningThread();
 
-// void EventLoop::abortNotInOwningThread()
-// {
-//     std::cout << threadId_ << " : "
-//               << "abort not in owning thread" << std::endl;
-//     abort();
-// }
+    isLooping_ = true;
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+}
 
-// void EventLoop::abortNotUniqueLoopInThisThread()
-// {
-//     std::cout << threadId_ << " : "
-//               << "abort not unique loop in this thread" << std::endl;
-//     abort();
-// }
+inline void EventLoop::assertInOwningThread()
+{
+    if (!isInOwningThread()) {
+        abortNotInOwningThread();
+    }
+}
 
-// void EventLoop::loop()
-// {
-//     assert(isLooping_ == false);
-//     assertInOwningThread();
-
-//     isLooping_ = true;
-//     std::this_thread::sleep_for(std::chrono::seconds(2));
-// }
+void EventLoop::abortNotInOwningThread()
+{
+    LOG_FATAL << "Eventloop " << loopInThisThread_
+              << " is not called in the owing thread";
+}
