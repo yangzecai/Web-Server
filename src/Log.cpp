@@ -2,11 +2,17 @@
 
 #include <chrono>
 #include <iostream>
+#include <atomic>
 
 namespace log {
 
-Manager manager;
 thread_local std::stringstream Logger::ss_;
+
+void setLevel(Level level) { Manager::getInstance().setLevel(level); }
+void setAppender(Appender::ptr apd)
+{
+    Manager::getInstance().setAppender(std::move(apd));
+}
 
 Logger::Logger(const std::string& fileName, int line, Level level)
     : event_(std::make_shared<Event>(Event{
@@ -19,7 +25,7 @@ Logger::~Logger()
 {
     event_->message = ss_.str();
     ss_.str("");
-    manager.receiveEvent(event_);
+    Manager::getInstance().receiveEvent(event_);
 }
 
 Formater::Formater()
@@ -75,6 +81,7 @@ Manager::Manager()
     , nextFlushTime_(std::chrono::high_resolution_clock::now() +
                      std::chrono::seconds(3))
 {
+    start();
 }
 
 Manager::~Manager()
@@ -112,10 +119,10 @@ void Manager::receiveEvent(Event::ptr event)
 
 void Manager::handleEvent()
 {
-    assert(isInLogThread());
+    Event::ptr event;
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        if (eventQueue_.empty()) {
+        while (eventQueue_.empty()) {
             auto status = notEmpty_.wait_until(lock, nextFlushTime_);
             if (status == std::cv_status::timeout) {
                 appender_->flush();
@@ -123,9 +130,9 @@ void Manager::handleEvent()
                 return;
             }
         }
+        event = std::move(eventQueue_.front());
+        eventQueue_.pop();
     }
-    auto event = std::move(eventQueue_.front());
-    eventQueue_.pop();
 
     if (event == nullptr) { // 正常退出
         stop_ = true;
@@ -133,7 +140,7 @@ void Manager::handleEvent()
     }
 
     formater_->format(event);
-    appender_->append(event);
+    std::atomic_load<Appender>(&appender_)->append(event);
     if (event->level == FATAL) {
         appender_->flush();
         abort();
@@ -142,6 +149,7 @@ void Manager::handleEvent()
         appender_->flush();
         nextFlushTime_ += std::chrono::seconds(3);
     }
+
 }
 
 inline void StdoutAppender::append(Event::ptr event)
@@ -150,9 +158,21 @@ inline void StdoutAppender::append(Event::ptr event)
     std::cout << event->fmtLog;
 }
 
-inline void StdoutAppender::flush() { std::cout << std::flush; }
+inline void StdoutAppender::flush() {}
 
-FileAppender::FileAppender(const std::string& baseFileName)
+FileAppender::FileAppender(const std::string& fileName)
+    : Appender()
+    , fs_(fileName)
+{
+}
+
+FileAppender::~FileAppender() { fs_.close(); }
+
+void FileAppender::append(Event::ptr event) { fs_ << event->fmtLog; }
+
+void FileAppender::flush() { fs_ << std::flush; }
+
+RollingFileAppender::RollingFileAppender(const std::string& baseFileName)
     : Appender()
     , fs_()
     , baseFileName_(baseFileName)
@@ -162,7 +182,9 @@ FileAppender::FileAppender(const std::string& baseFileName)
     fs_.open(getLogFileName());
 }
 
-void FileAppender::append(Event::ptr event)
+RollingFileAppender::~RollingFileAppender() { fs_.close(); }
+
+void RollingFileAppender::append(Event::ptr event)
 {
     assert(!event->fmtLog.empty());
     fs_ << event->fmtLog;
@@ -176,9 +198,9 @@ void FileAppender::append(Event::ptr event)
     }
 }
 
-inline void FileAppender::flush() { fs_ << std::flush; }
+inline void RollingFileAppender::flush() { fs_ << std::flush; }
 
-TimePoint FileAppender::getTomorrowZeroTime()
+TimePoint RollingFileAppender::getTomorrowZeroTime()
 {
     using namespace std::chrono;
     static const int kSecPerDay = 24 * 60 * 60;
@@ -187,7 +209,7 @@ TimePoint FileAppender::getTomorrowZeroTime()
     return high_resolution_clock::from_time_t(now);
 }
 
-std::string FileAppender::getLogFileName() const
+std::string RollingFileAppender::getLogFileName() const
 {
     using namespace std::chrono;
     static const int kMicroPerSec = 1000000;
@@ -206,7 +228,7 @@ std::string FileAppender::getLogFileName() const
     return fileName;
 }
 
-void FileAppender::rollFile()
+void RollingFileAppender::rollFile()
 {
     fs_.close();
     fs_.open(getLogFileName());

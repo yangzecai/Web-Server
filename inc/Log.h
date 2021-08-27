@@ -15,13 +15,13 @@
 #include <ctime>
 
 #define LOG_TRACE                                                              \
-    if (log::manager.getLevel() <= log::TRACE)                                 \
+    if (log::Manager::getInstance().getLevel() <= log::TRACE)                  \
     log::Logger(__FILE__, __LINE__, log::TRACE).getStream()
 #define LOG_DEBUG                                                              \
-    if (log::manager.getLevel() <= log::DEBUG)                                 \
+    if (log::Manager::getInstance().getLevel() <= log::DEBUG)                  \
     log::Logger(__FILE__, __LINE__, log::DEBUG).getStream()
 #define LOG_INFO                                                               \
-    if (log::manager.getLevel() <= log::INFO)                                  \
+    if (log::Manager::getInstance().getLevel() <= log::INFO)                   \
     log::Logger(__FILE__, __LINE__, log::INFO).getStream()
 #define LOG_WARN log::Logger(__FILE__, __LINE__, log::WARN).getStream()
 #define LOG_ERROR log::Logger(__FILE__, __LINE__, log::ERROR).getStream()
@@ -30,9 +30,6 @@
 namespace log {
 
 using TimePoint = std::chrono::time_point<std::chrono::high_resolution_clock>;
-
-class Manager;
-extern Manager manager;
 
 enum Level
 {
@@ -97,7 +94,7 @@ private:
 
 class Appender {
 public:
-    using ptr = std::unique_ptr<Appender>;
+    using ptr = std::shared_ptr<Appender>;
 
     Appender() {}
     virtual ~Appender() {}
@@ -111,13 +108,16 @@ public:
 
 class Manager {
 public:
-    Manager();
-    ~Manager();
+    static Manager& getInstance()
+    {
+        static Manager manager;
+        return manager;
+    }
 
     Manager(const Manager&) = delete;
     Manager& operator=(const Manager&) = delete;
 
-    void setAppender(Appender* apd) { appender_.reset(apd); }
+    void setAppender(Appender::ptr apd) { std::atomic_store<Appender>(&appender_, apd); }
     void setLevel(Level level) { level_ = level; }
     Level getLevel() const { return level_; }
 
@@ -141,7 +141,10 @@ private:
     mutable std::condition_variable notEmpty_;
     Level level_;
     bool stop_;
-    std::chrono::time_point<std::chrono::high_resolution_clock> nextFlushTime_;
+    TimePoint nextFlushTime_;
+
+    Manager();
+    ~Manager();
 };
 
 class StdoutAppender : public Appender {
@@ -158,8 +161,19 @@ public:
 
 class FileAppender : public Appender {
 public:
-    FileAppender(const std::string& baseFileName);
-    ~FileAppender() {}
+    FileAppender(const std::string& fileName);
+    ~FileAppender();
+
+    void append(Event::ptr event) override;
+    void flush() override;
+private:
+    std::ofstream fs_;
+};
+
+class RollingFileAppender : public Appender {
+public:
+    RollingFileAppender(const std::string& baseFileName);
+    ~RollingFileAppender();
 
     void append(Event::ptr event) override;
     void flush() override;
@@ -175,5 +189,8 @@ private:
     std::string getLogFileName() const;
     void rollFile();
 };
+
+void setLevel(Level level);
+void setAppender(Appender::ptr apd);
 
 } // namespace log
