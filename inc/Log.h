@@ -41,15 +41,34 @@ enum Level
     FATAL
 };
 
-struct Event {
+class Manager;
+
+class Event {
+public:
     using ptr = std::shared_ptr<Event>;
+
+    Event() {}
+    virtual ~Event() {}
+
+    virtual void handle(Manager* manager) = 0;
+};
+
+class MessageEvent : public Event,
+                     public std::enable_shared_from_this<MessageEvent> {
+public:
+    using ptr = std::shared_ptr<MessageEvent>;
+
+    MessageEvent(const std::string& fileName, int line, Level level);
+    ~MessageEvent() {}
+
+    void handle(Manager* manager) override;
 
     std::string file;
     int line;
     Level level;
     TimePoint time;
-    std::thread::id treadId;
-    std::string message;
+    std::thread::id threadId;
+    std::string content;
     std::string fmtLog;
 };
 
@@ -65,7 +84,7 @@ public:
 
 private:
     static thread_local std::stringstream ss_;
-    Event::ptr event_;
+    MessageEvent::ptr event_;
 };
 
 class Formater {
@@ -78,10 +97,10 @@ public:
     Formater(const Formater&) = delete;
     Formater& operator=(const Formater&) = delete;
 
-    void format(Event::ptr event);
+    void format(MessageEvent::ptr event);
 
 private:
-    Event::ptr event_;
+    MessageEvent::ptr event_;
     std::stringstream ss_;
 
     auto time();
@@ -89,7 +108,7 @@ private:
     auto line();
     auto level();
     auto threadId();
-    auto message();
+    auto content();
 };
 
 class Appender {
@@ -102,7 +121,7 @@ public:
     Appender(const Appender&) = delete;
     Appender& operator=(const Appender&) = delete;
 
-    virtual void append(Event::ptr event) = 0;
+    virtual void append(MessageEvent::ptr event) = 0;
     virtual void flush() = 0;
 };
 
@@ -117,9 +136,11 @@ public:
     Manager(const Manager&) = delete;
     Manager& operator=(const Manager&) = delete;
 
-    void setAppender(Appender::ptr apd) { std::atomic_store<Appender>(&appender_, apd); }
+    void setAppender(Appender::ptr apd) { appender_ = apd; }
+    Appender::ptr getAppender(void) { return appender_; }
     void setLevel(Level level) { level_ = level; }
     Level getLevel() const { return level_; }
+    Formater::ptr& getFormat() { return formater_; }
 
     void start();
     void stop();
@@ -155,7 +176,7 @@ public:
     }
     ~StdoutAppender() {}
 
-    void append(Event::ptr event) override;
+    void append(MessageEvent::ptr event) override;
     void flush() override;
 };
 
@@ -164,8 +185,9 @@ public:
     FileAppender(const std::string& fileName);
     ~FileAppender();
 
-    void append(Event::ptr event) override;
+    void append(MessageEvent::ptr event) override;
     void flush() override;
+
 private:
     std::ofstream fs_;
 };
@@ -175,7 +197,7 @@ public:
     RollingFileAppender(const std::string& baseFileName);
     ~RollingFileAppender();
 
-    void append(Event::ptr event) override;
+    void append(MessageEvent::ptr event) override;
     void flush() override;
 
 private:
@@ -190,7 +212,24 @@ private:
     void rollFile();
 };
 
+class SetAppenderEvent : public Event {
+public:
+    using ptr = std::shared_ptr<SetAppenderEvent>;
+
+    SetAppenderEvent(Appender::ptr appender)
+        : Event()
+        , appender_(appender)
+    {
+    }
+    ~SetAppenderEvent() {}
+
+    void handle(Manager* manager) override { manager->setAppender(appender_); }
+
+private:
+    Appender::ptr appender_;
+};
+
 void setLevel(Level level);
-void setAppender(Appender::ptr apd);
+void setAppender(Appender::ptr appender);
 
 } // namespace log

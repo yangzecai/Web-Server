@@ -2,28 +2,48 @@
 
 #include <chrono>
 #include <iostream>
-#include <atomic>
 
 namespace log {
 
 thread_local std::stringstream Logger::ss_;
 
 void setLevel(Level level) { Manager::getInstance().setLevel(level); }
-void setAppender(Appender::ptr apd)
+void setAppender(Appender::ptr appender)
 {
-    Manager::getInstance().setAppender(std::move(apd));
+    Manager::getInstance().receiveEvent(
+        std::make_shared<SetAppenderEvent>(appender));
+}
+
+MessageEvent::MessageEvent(const std::string& file, int line, Level level)
+    : Event()
+    , file(file)
+    , line(line)
+    , level(level)
+    , time(std::chrono::high_resolution_clock::now())
+    , threadId(std::this_thread::get_id())
+    , content()
+    , fmtLog()
+{
+}
+
+void MessageEvent::handle(Manager* manager)
+{
+    manager->getFormat()->format(shared_from_this());
+    manager->getAppender()->append(shared_from_this());
+    if (level == FATAL) {
+        manager->getAppender()->flush();
+        abort();
+    }
 }
 
 Logger::Logger(const std::string& fileName, int line, Level level)
-    : event_(std::make_shared<Event>(Event{
-          fileName, line, level, std::chrono::high_resolution_clock::now(),
-          std::this_thread::get_id(), std::string(), std::string()}))
+    : event_(std::make_shared<MessageEvent>(fileName, line, level))
 {
 }
 
 Logger::~Logger()
 {
-    event_->message = ss_.str();
+    event_->content = ss_.str();
     ss_.str("");
     Manager::getInstance().receiveEvent(event_);
 }
@@ -58,16 +78,16 @@ inline auto Formater::level()
                                      "WARN ", "ERROR", "FATAL"};
     return levelStr[event_->level];
 }
-inline auto Formater::threadId() { return event_->treadId; }
-inline auto Formater::message() { return event_->message; }
+inline auto Formater::threadId() { return event_->threadId; }
+inline auto Formater::content() { return event_->content; }
 
-void Formater::format(Event::ptr event)
+void Formater::format(std::shared_ptr<MessageEvent> event)
 {
     event_ = event;
     ss_.str("");
 
     ss_ << time() << ' ' << level() << ' ' << threadId() << ' ' << file() << ':'
-        << line() << " " << message() << "\n";
+        << line() << " " << content() << "\n";
     event->fmtLog = std::move(ss_.str());
 }
 
@@ -139,20 +159,10 @@ void Manager::handleEvent()
         return;
     }
 
-    formater_->format(event);
-    std::atomic_load<Appender>(&appender_)->append(event);
-    if (event->level == FATAL) {
-        appender_->flush();
-        abort();
-    }
-    if (event->time > nextFlushTime_) {
-        appender_->flush();
-        nextFlushTime_ += std::chrono::seconds(3);
-    }
-
+    event->handle(this);
 }
 
-inline void StdoutAppender::append(Event::ptr event)
+inline void StdoutAppender::append(MessageEvent::ptr event)
 {
     assert(!event->fmtLog.empty());
     std::cout << event->fmtLog;
@@ -168,7 +178,7 @@ FileAppender::FileAppender(const std::string& fileName)
 
 FileAppender::~FileAppender() { fs_.close(); }
 
-void FileAppender::append(Event::ptr event) { fs_ << event->fmtLog; }
+void FileAppender::append(MessageEvent::ptr event) { fs_ << event->fmtLog; }
 
 void FileAppender::flush() { fs_ << std::flush; }
 
@@ -184,7 +194,7 @@ RollingFileAppender::RollingFileAppender(const std::string& baseFileName)
 
 RollingFileAppender::~RollingFileAppender() { fs_.close(); }
 
-void RollingFileAppender::append(Event::ptr event)
+void RollingFileAppender::append(MessageEvent::ptr event)
 {
     assert(!event->fmtLog.empty());
     fs_ << event->fmtLog;
