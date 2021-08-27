@@ -50,6 +50,9 @@ public:
     Event() {}
     virtual ~Event() {}
 
+    Event(const Event&) = delete;
+    Event& operator=(const Event&) = delete;
+
     virtual void handle(Manager* manager) = 0;
 };
 
@@ -127,6 +130,8 @@ public:
 
 class Manager {
 public:
+    friend class StopEvent;
+    
     static Manager& getInstance()
     {
         static Manager manager;
@@ -150,7 +155,7 @@ public:
     {
         return std::this_thread::get_id() == logThread_.get_id();
     }
-    void receiveEvent(Event::ptr event);
+    void sendEvent(Event::ptr event);
     void handleEvent();
 
 private:
@@ -158,8 +163,10 @@ private:
     Formater::ptr formater_;
     Appender::ptr appender_;
     std::queue<Event::ptr> eventQueue_;
+    size_t queueCapacity_;
     mutable std::mutex mutex_;
     mutable std::condition_variable notEmpty_;
+    mutable std::condition_variable notFill_;
     Level level_;
     bool stop_;
     TimePoint nextFlushTime_;

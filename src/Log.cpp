@@ -10,7 +10,7 @@ thread_local std::stringstream Logger::ss_;
 void setLevel(Level level) { Manager::getInstance().setLevel(level); }
 void setAppender(Appender::ptr appender)
 {
-    Manager::getInstance().receiveEvent(
+    Manager::getInstance().sendEvent(
         std::make_shared<SetAppenderEvent>(appender));
 }
 
@@ -45,7 +45,7 @@ Logger::~Logger()
 {
     event_->content = ss_.str();
     ss_.str("");
-    Manager::getInstance().receiveEvent(event_);
+    Manager::getInstance().sendEvent(std::move(event_));
 }
 
 Formater::Formater()
@@ -59,11 +59,15 @@ auto Formater::time()
     using namespace std::chrono;
     static const int kMicroPerSec = 1000000;
     static char timeStr[32];
+    static time_t lastSeconds = 0;
     uint64_t time =
         duration_cast<microseconds>(event_->time.time_since_epoch()).count();
     time_t seconds = time / kMicroPerSec;
     uint64_t micros = time % kMicroPerSec;
-    std::strftime(timeStr, 32, "%Y-%m-%d %T.", std::localtime(&seconds));
+    if (seconds != lastSeconds) {
+        std::strftime(timeStr, 32, "%Y-%m-%d %T.", std::localtime(&seconds));
+        lastSeconds = seconds;
+    }
     std::snprintf(timeStr + 20, 7, "%06lu", micros);
     return timeStr;
 }
@@ -91,29 +95,30 @@ void Formater::format(std::shared_ptr<MessageEvent> event)
     event->fmtLog = std::move(ss_.str());
 }
 
+class StopEvent : public Event {
+public:
+    StopEvent()
+        : Event()
+    {
+    }
+    ~StopEvent() {}
+    void handle(Manager* manager) { manager->stop_ = true; }
+};
+
 Manager::Manager()
     : logThread_()
     , formater_(std::make_unique<Formater>())
     , appender_(std::make_unique<StdoutAppender>())
     , eventQueue_()
+    , queueCapacity_(1000000)
+    , mutex_()
+    , notEmpty_()
+    , notFill_()
     , level_(INFO)
     , stop_(false)
     , nextFlushTime_(std::chrono::high_resolution_clock::now() +
                      std::chrono::seconds(3))
 {
-    start();
-}
-
-Manager::~Manager()
-{
-    if (!stop_) {
-        stop();
-    }
-}
-
-void Manager::start()
-{
-    assert(!isStopped());
     logThread_ = std::thread([this]() {
         while (!this->isStopped()) {
             this->handleEvent();
@@ -121,18 +126,20 @@ void Manager::start()
     });
 }
 
-void Manager::stop()
+Manager::~Manager()
 {
-    assert(!isInLogThread());
-    receiveEvent(nullptr);
+    sendEvent(std::make_shared<StopEvent>());
     logThread_.join();
     appender_->flush();
 }
 
-void Manager::receiveEvent(Event::ptr event)
+void Manager::sendEvent(Event::ptr event)
 {
     assert(!isInLogThread());
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
+    while (eventQueue_.size() > queueCapacity_) {
+        notFill_.wait(lock);
+    }
     eventQueue_.push(std::move(event));
     notEmpty_.notify_one();
 }
@@ -147,16 +154,11 @@ void Manager::handleEvent()
             if (status == std::cv_status::timeout) {
                 appender_->flush();
                 nextFlushTime_ += std::chrono::seconds(3);
-                return;
             }
         }
         event = std::move(eventQueue_.front());
         eventQueue_.pop();
-    }
-
-    if (event == nullptr) { // 正常退出
-        stop_ = true;
-        return;
+        notFill_.notify_one();
     }
 
     event->handle(this);
@@ -178,7 +180,10 @@ FileAppender::FileAppender(const std::string& fileName)
 
 FileAppender::~FileAppender() { fs_.close(); }
 
-void FileAppender::append(MessageEvent::ptr event) { fs_ << event->fmtLog; }
+void FileAppender::append(MessageEvent::ptr event)
+{
+    fs_ << event->fmtLog;
+}
 
 void FileAppender::flush() { fs_ << std::flush; }
 
