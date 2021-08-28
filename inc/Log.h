@@ -83,10 +83,10 @@ public:
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
 
-    std::stringstream& getStream() { return ss_; }
+    std::ostringstream& getStream() { return ss_; }
 
 private:
-    static thread_local std::stringstream ss_;
+    static thread_local std::ostringstream ss_;
     MessageEvent::ptr event_;
 };
 
@@ -104,7 +104,7 @@ public:
 
 private:
     MessageEvent::ptr event_;
-    std::stringstream ss_;
+    std::ostringstream ss_;
 
     auto time();
     auto file();

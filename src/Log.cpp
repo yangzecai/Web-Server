@@ -5,7 +5,7 @@
 
 namespace log {
 
-thread_local std::stringstream Logger::ss_;
+thread_local std::ostringstream Logger::ss_;
 
 void setLevel(Level level) { Manager::getInstance().setLevel(level); }
 void setAppender(Appender::ptr appender)
@@ -108,7 +108,7 @@ public:
 Manager::Manager()
     : logThread_()
     , formater_(std::make_unique<Formater>())
-    , appender_(std::make_unique<StdoutAppender>())
+    , appender_(std::make_shared<StdoutAppender>())
     , eventQueue_()
     , queueCapacity_(1000000)
     , mutex_()
@@ -137,7 +137,7 @@ void Manager::sendEvent(Event::ptr event)
 {
     assert(!isInLogThread());
     std::unique_lock<std::mutex> lock(mutex_);
-    while (eventQueue_.size() > queueCapacity_) {
+    while (eventQueue_.size() >= queueCapacity_) {
         notFill_.wait(lock);
     }
     eventQueue_.push(std::move(event));
@@ -180,10 +180,7 @@ FileAppender::FileAppender(const std::string& fileName)
 
 FileAppender::~FileAppender() { fs_.close(); }
 
-void FileAppender::append(MessageEvent::ptr event)
-{
-    fs_ << event->fmtLog;
-}
+void FileAppender::append(MessageEvent::ptr event) { fs_ << event->fmtLog; }
 
 void FileAppender::flush() { fs_ << std::flush; }
 
