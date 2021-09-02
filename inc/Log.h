@@ -128,6 +128,46 @@ public:
     virtual void flush() = 0;
 };
 
+template <class T, uint32_t CAP>
+class SPSCQueue {
+public:
+    static_assert(CAP && !(CAP & (CAP - 1))); // CAP不为0且是2的幂次
+
+    T* alloc()
+    {
+        if (producerPos_ - consumerCachePos_ == CAP) {
+            if (consumerCachePos_ == consumerPos_) {
+                return nullptr;
+            }
+            consumerCachePos_ = consumerPos_;
+        }
+        return &queue_[producerPos_ % CAP];
+    }
+
+    void push() { ++producerPos_; }
+
+    T* front()
+    {
+        if (producerCachePos_ == consumerPos_) {
+            if (producerCachePos_ == producerPos_) {
+                return nullptr;
+            }
+            producerCachePos_ = producerPos_;
+        }
+        return &queue_[consumerPos_ % CAP];
+    }
+
+    void pop() { ++consumerPos_; }
+
+private:
+    T queue_[CAP];
+    uint32_t producerPos_ = 0;
+    uint32_t consumerPos_ = 0;
+
+    uint32_t producerCachePos_ = 0;
+    uint32_t consumerCachePos_ = 0;
+};
+
 class Manager {
 public:
     friend class StopEvent;
@@ -162,11 +202,7 @@ private:
     std::thread logThread_;
     Formater::ptr formater_;
     Appender::ptr appender_;
-    std::queue<Event::ptr> eventQueue_;
-    size_t queueCapacity_;
-    mutable std::mutex mutex_;
-    mutable std::condition_variable notEmpty_;
-    mutable std::condition_variable notFill_;
+    std::vector<SPSCQueue<Event::ptr, 65536>> eventQueues_;
     Level level_;
     bool stop_;
     TimePoint nextFlushTime_;

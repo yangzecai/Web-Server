@@ -6,6 +6,7 @@
 namespace log {
 
 thread_local std::ostringstream Logger::ss_;
+thread_local SPSCQueue threadBuffer_;
 
 void setLevel(Level level) { Manager::getInstance().setLevel(level); }
 void setAppender(Appender::ptr appender)
