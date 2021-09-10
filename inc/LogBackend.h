@@ -9,6 +9,8 @@
 #include <thread>
 #include <vector>
 
+namespace log {
+
 class LogBackend {
 public:
     static RingBuffer* getThreadBuffer();
@@ -30,3 +32,5 @@ private:
     mutable std::mutex mutex_;
     bool running_;
 };
+
+} // namespace log

@@ -1,13 +1,14 @@
 #pragma once
 
+#include "Config.h"
 #include "LogBackend.h"
 #include "RingBuffer.h"
-#include "Config.h"
-
-#include <string>
 
 #include <cassert>
 #include <cstring>
+#include <string>
+
+namespace log {
 
 class StreamBuffer {
 public:
@@ -112,7 +113,6 @@ public:
     void resetBuffer() { buffer_.reset(); }
 
 private:
-
     template <typename T>
     void formatInteger(T);
 
@@ -120,3 +120,5 @@ private:
 
     static const int kMaxNumericSize = 32;
 };
+
+} // namespace log

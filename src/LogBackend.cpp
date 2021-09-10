@@ -3,6 +3,8 @@
 
 #include <cassert>
 
+namespace log {
+
 LogBackend LogBackend::singleton;
 thread_local RingBuffer* LogBackend::t_buffer_ = nullptr;
 
@@ -72,3 +74,5 @@ void LogBackend::threadFunc()
         // FIXME : 未实时 delete 退出线程的 buffer
     }
 }
+
+} // namespace log

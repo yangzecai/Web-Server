@@ -1,10 +1,11 @@
 #pragma once
 
-#include <memory>
-
 #include <cstdio>
 #include <ctime>
+#include <memory>
 #include <string>
+
+namespace log {
 
 class LogAppender {
 public:
@@ -30,3 +31,5 @@ private:
     char buffer_[64 * 1024];
     uint32_t writtenBytes_;
 };
+
+} // namespace log

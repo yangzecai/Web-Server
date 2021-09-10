@@ -2,13 +2,12 @@
 
 #include <algorithm>
 #include <cassert>
-#include <limits>
+#include <cinttypes>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 #include <type_traits>
-
-#include <cinttypes>
 
 const char digits[] = "9876543210123456789";
 const char* zero = digits + 9;
@@ -16,6 +15,8 @@ static_assert(sizeof(digits) == 20, "wrong number of digits");
 
 const char digitsHex[] = "0123456789ABCDEF";
 static_assert(sizeof digitsHex == 17, "wrong number of digitsHex");
+
+namespace log {
 
 // Efficient Integer to String Conversions, by Matthew Wilson.
 template <typename T>
@@ -135,3 +136,5 @@ LogStream& LogStream::operator<<(double v)
     }
     return *this;
 }
+
+} // namespace log

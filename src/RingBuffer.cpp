@@ -1,10 +1,9 @@
 #include "RingBuffer.h"
 
 #include <algorithm>
-#include <thread>
-
 #include <cassert>
 #include <cstring>
+#include <thread>
 
 RingBuffer::RingBuffer(uint32_t cap, uint32_t tailCap)
     : data_(new char[cap + tailCap])

@@ -3,6 +3,8 @@
 #include <cassert>
 #include <ctime>
 
+namespace log {
+
 LogAppender::ptr LogAppender::createLogAppender(const std::string& baseName,
                                                 uint32_t rollSize)
 {
@@ -78,3 +80,5 @@ std::string LogAppender::getLogFileName(std::time_t now)
 
     return fileName;
 }
+
+} // namespace log

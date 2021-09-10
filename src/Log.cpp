@@ -34,7 +34,6 @@ inline LogStream& operator<<(LogStream& s, T v)
 
 auto LogLine::time()
 {
-    // FIXME : Not MT-safety
     static thread_local time_t t_lastTime = 0;
     static thread_local char t_timeStr[32];
     if (t_lastTime != time_.tv_sec) {
