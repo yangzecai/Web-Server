@@ -46,8 +46,6 @@ public:
         return ret;
     }
 
-    
-
 private:
     mutable std::mutex mutex_;
     std::condition_variable notEmpty_;
