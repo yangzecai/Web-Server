@@ -40,10 +40,10 @@ private:
         void active() {}
     };
 
-    static thread_local RingBuffer* t_buffer_; // FIXME : using shared ptr
+    static thread_local RingBuffer* t_buffer_; // TODO : 测试用智能指针速度
     static thread_local BufferDestoryer bufferDestoryer_;
 
-    LogAppender* file_; // FIXME : using smart ptr
+    LogAppender* file_; // TODO : 测试用智能指针速度
     std::thread logThread_;
     bool running_;
     std::vector<RingBuffer*> buffers_;

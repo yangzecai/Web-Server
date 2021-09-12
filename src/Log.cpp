@@ -74,21 +74,26 @@ auto LogLine::threadId()
 
 LogLine::LogLine(const char* file, int line, LogLevel level)
     : time_()
-    , stream_()
+    , stream_(new LogStream())
     , level_(level)
     , line_(line)
     , file_(file)
 {
     ::gettimeofday(&time_, nullptr);
 
-    stream_ << time() << ' ' << threadId() << ' ' << this->level() << ' ';
+    getStream() << time() << ' ' << threadId() << ' ' << this->level() << ' ';
 }
 
 LogLine::~LogLine()
 {
-    stream_ << " - " << file() << ':' << line() << '\n';
+    getStream() << " - " << file() << ':' << line() << '\n';
+    delete stream_;
+    stream_ = nullptr;
 
-    // FIXME : FATAL abort
+    if (level_ == FATAL) {
+        LogBackend::sync();
+        abort();
+    }
 }
 
 } // namespace log

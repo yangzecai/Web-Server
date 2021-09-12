@@ -36,11 +36,11 @@ class LogLine {
 public:
     LogLine(const char* file, int line, LogLevel level);
     ~LogLine();
-    LogStream& getStream() { return stream_; }
+    LogStream& getStream() { return *stream_; }
 
 private:
     timeval time_;
-    LogStream stream_;
+    LogStream* stream_; // TODO : 测试用智能指针速度
     LogLevel level_;
     int line_;
     const char* file_;
