@@ -3,18 +3,17 @@
 #include "LogStream.h"
 
 #define LOG_TRACE                                                              \
-    if (log::getLevel() <= log::TRACE)                                     \
+    if (log::getLevel() <= log::TRACE)                                         \
     log::LogLine(__FILE__, __LINE__, log::TRACE).getStream()
 #define LOG_DEBUG                                                              \
-    if (log::getLevel() <= log::DEBUG)                                     \
+    if (log::getLevel() <= log::DEBUG)                                         \
     log::LogLine(__FILE__, __LINE__, log::DEBUG).getStream()
 #define LOG_INFO                                                               \
-    if (log::getLevel() <= log::INFO)                                      \
+    if (log::getLevel() <= log::INFO)                                          \
     log::LogLine(__FILE__, __LINE__, log::INFO).getStream()
 #define LOG_WARN log::LogLine(__FILE__, __LINE__, log::WARN).getStream()
 #define LOG_ERROR log::LogLine(__FILE__, __LINE__, log::ERROR).getStream()
 #define LOG_FATAL log::LogLine(__FILE__, __LINE__, log::FATAL).getStream()
-
 
 class timeval;
 
@@ -31,6 +30,7 @@ enum LogLevel : uint8_t
 };
 
 LogLevel getLevel();
+void setLevel(LogLevel);
 
 class LogLine {
 public:
@@ -52,4 +52,4 @@ private:
     auto threadId();
 };
 
-}
+} // namespace log

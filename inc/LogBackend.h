@@ -3,6 +3,7 @@
 #include "LogAppender.h"
 #include "RingBuffer.h"
 
+#include <condition_variable>
 #include <mutex>
 #include <queue>
 #include <string>
@@ -14,6 +15,7 @@ namespace log {
 class LogBackend {
 public:
     static RingBuffer* getThreadBuffer();
+    static void sync();
 
 private:
     LogBackend();
@@ -21,16 +23,41 @@ private:
 
     void threadFunc();
 
-    static LogBackend singleton;
-    static thread_local RingBuffer* t_buffer_; // FIXME : using shared ptr
+    void registerThreadBuffer();
+    void deleteThreadBuffer();
 
-    static void registerThreadBuffer();
+    static LogBackend singleton;
+
+    class BufferDestoryer {
+    public:
+        BufferDestoryer() = default;
+        ~BufferDestoryer()
+        {
+            if (t_buffer_) {
+                singleton.deleteThreadBuffer();
+            }
+        }
+        void active() {}
+    };
+
+    static thread_local RingBuffer* t_buffer_; // FIXME : using shared ptr
+    static thread_local BufferDestoryer bufferDestoryer_;
 
     LogAppender* file_; // FIXME : using smart ptr
     std::thread logThread_;
-    std::vector<RingBuffer*> buffers_;
-    mutable std::mutex mutex_;
     bool running_;
+    std::vector<RingBuffer*> buffers_;
+    mutable std::mutex bufVecMutex_;
+    enum
+    {
+        SYNC_NONE,
+        SYNC_REQUESTED,
+        SYNC_HANDLING,
+        SYNC_COMPLETED
+    } syncStatus_;
+    mutable std::mutex condMutex_;
+    mutable std::condition_variable syncCompleted_;
+    mutable std::condition_variable workAdded_;
 };
 
 } // namespace log

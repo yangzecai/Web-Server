@@ -14,6 +14,7 @@ LogAppender::ptr LogAppender::createLogAppender(const std::string& baseName,
 LogAppender::LogAppender(const std::string& baseName, uint32_t rollSize)
     : baseName_(baseName)
     , rollSize_(rollSize)
+    , lastRoll_(0)
     , fp_(nullptr)
     , buffer_()
     , writtenBytes_(0)
@@ -46,7 +47,7 @@ void LogAppender::flush() { std::fflush(fp_); }
 
 bool LogAppender::rollFile()
 {
-    std::time_t now;
+    std::time_t now = 0;
     std::time(&now);
 
     if (now != lastRoll_) {

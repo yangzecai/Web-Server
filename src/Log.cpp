@@ -10,8 +10,9 @@
 
 namespace log {
 
-// FIXME : 很明显，不用我多说了吧。
-LogLevel getLevel() { return INFO; }
+LogLevel g_logLevel = LogLevel::INFO;
+LogLevel getLevel() { return g_logLevel; }
+void setLevel(LogLevel level) { g_logLevel = level; }
 
 // helper class for known string length at compile time
 class T {
