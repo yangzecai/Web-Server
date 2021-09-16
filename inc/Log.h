@@ -14,12 +14,18 @@
 #define LOG_WARN log::LogLine(__FILE__, __LINE__, log::WARN).getStream()
 #define LOG_ERROR log::LogLine(__FILE__, __LINE__, log::ERROR).getStream()
 #define LOG_FATAL log::LogLine(__FILE__, __LINE__, log::FATAL).getStream()
+#define LOG_SYSERROR                                                           \
+    log::LogLine(__FILE__, __LINE__, log::ERROR).getStream()                   \
+        << log::strerror() << ' '
+#define LOG_SYSFATAL                                                           \
+    log::LogLine(__FILE__, __LINE__, log::FATAL).getStream()                   \
+        << log::strerror() << ' '
 
 class timeval;
 
 namespace log {
 
-enum LogLevel : uint8_t
+enum LogLevel
 {
     TRACE = 0,
     DEBUG,
@@ -28,7 +34,7 @@ enum LogLevel : uint8_t
     ERROR,
     FATAL
 };
-
+const char* strerror();
 LogLevel getLevel();
 void setLevel(LogLevel);
 
@@ -50,6 +56,7 @@ private:
     auto level();
     auto line();
     auto threadId();
+    auto error();
 };
 
 } // namespace log

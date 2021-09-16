@@ -10,6 +10,13 @@
 
 namespace log {
 
+thread_local char t_errBuf[64];
+const char* strerror()
+{
+    assert(errno);
+    return strerror_r(errno, t_errBuf, sizeof(t_errBuf));
+}
+
 LogLevel g_logLevel = LogLevel::INFO;
 LogLevel getLevel() { return g_logLevel; }
 void setLevel(LogLevel level) { g_logLevel = level; }
