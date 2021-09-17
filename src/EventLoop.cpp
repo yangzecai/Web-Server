@@ -1,4 +1,5 @@
 #include "EventLoop.h"
+#include "Channel.h"
 #include "Log.h"
 #include "Poller.h"
 
@@ -11,8 +12,9 @@ thread_local EventLoop* EventLoop::loopInThisThread_ = nullptr;
 
 EventLoop::EventLoop()
     : threadId_(std::this_thread::get_id())
-    , isLooping_(false)
-    , poller_(new Poller())
+    , looping_(false)
+    , quit_(false)
+    , poller_(std::make_unique<Poller>())
 {
     LOG_TRACE << "EventLoop is created";
     if (loopInThisThread_ != nullptr) {
@@ -26,11 +28,39 @@ EventLoop::~EventLoop() {}
 
 void EventLoop::loop()
 {
-    assert(isLooping_ == false);
+    assert(looping_ == false);
     assertInOwningThread();
 
-    isLooping_ = true;
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    looping_ = true;
+    while (!quit_) {
+        std::vector<Channel*> activeChannels =
+            std::move(poller_->poll(kPollTimeoutMs));
+
+        for (Channel* channel : activeChannels) {
+            channel->handleEvent();
+        }
+    }
+    looping_ = false;
+    LOG_TRACE << "Eventloop stop looping";
+}
+
+void EventLoop::addChannel(Channel* channel)
+{
+    assert(channel->getOwnerLoop() == this);
+    assertInOwningThread();
+    poller_->addChannel(channel);
+}
+void EventLoop::updateChannel(Channel* channel)
+{
+    assert(channel->getOwnerLoop() == this);
+    assertInOwningThread();
+    poller_->updateChannel(channel);
+}
+void EventLoop::removeChannel(Channel* channel)
+{
+    assert(channel->getOwnerLoop() == this);
+    assertInOwningThread();
+    poller_->removeChannel(channel);
 }
 
 inline void EventLoop::assertInOwningThread()
