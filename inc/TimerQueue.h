@@ -33,6 +33,7 @@ private:
     void handleRead();
     void updateCurTime();
     const TimePoint& getCurTime() const;
+    const TimePoint& getNextExpiration() const;
     std::vector<TimerPtr> getExpiredAndRemove();
     itimerspec getIntervalFromNowToNextExpiration() const;
     void resetTimer();

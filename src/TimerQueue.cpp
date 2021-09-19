@@ -36,13 +36,18 @@ TimerQueue::~TimerQueue()
 
 void TimerQueue::updateCurTime()
 {
-    curTime_->updateExpiration(
-        std::chrono::high_resolution_clock::now());
+    curTime_->updateExpiration(std::chrono::high_resolution_clock::now());
 }
 
 const TimerQueue::TimePoint& TimerQueue::getCurTime() const
 {
     return curTime_->getExpiration();
+}
+
+const TimerQueue::TimePoint& TimerQueue::getNextExpiration() const
+{
+    assert(!timers_.empty());
+    return timers_.begin()->get()->getExpiration();
 }
 
 std::vector<TimerQueue::TimerPtr> TimerQueue::getExpiredAndRemove()
@@ -61,9 +66,8 @@ itimerspec TimerQueue::getIntervalFromNowToNextExpiration() const
     static const auto minInterval = std::chrono::microseconds(100);
     static const uint32_t kNanoPerSec = 1000UL * 1000 * 1000;
 
-    assert(timers_.begin() != timers_.end());
-    const TimePoint& nextExpiration = timers_.begin()->get()->getExpiration();
-    auto interval = nextExpiration - getCurTime();
+    assert(!timers_.empty());
+    auto interval = getNextExpiration() - getCurTime();
     interval = interval < minInterval ? minInterval : interval;
 
     itimerspec newValue;
@@ -75,7 +79,7 @@ itimerspec TimerQueue::getIntervalFromNowToNextExpiration() const
 
 void TimerQueue::resetTimer()
 {
-    if (timers_.begin() != timers_.end()) {
+    if (!timers_.empty()) {
         auto newValue = getIntervalFromNowToNextExpiration();
         if (::timerfd_settime(timerfd_, 0, &newValue, NULL) != 0) {
             LOG_SYSFATAL << "TimerQueue::resetTimer";
@@ -87,9 +91,13 @@ void TimerQueue::addTimer(const TimerCallback& cb, const TimePoint& tp,
                           const TimeInterval& ti)
 {
     loop_->assertInOwningThread();
-    timers_.insert(std::make_unique<Timer>(cb, tp, ti));
-    updateCurTime();
-    resetTimer();
+    if (timers_.empty() || tp < getNextExpiration()) {
+        timers_.insert(std::make_unique<Timer>(cb, tp, ti));
+        updateCurTime();
+        resetTimer();
+    } else {
+        timers_.insert(std::make_unique<Timer>(cb, tp, ti));
+    }
 }
 
 void TimerQueue::handleRead()
