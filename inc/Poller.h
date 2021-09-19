@@ -2,6 +2,7 @@
 
 #include <vector>
 
+class EventLoop;
 class Channel;
 struct epoll_event;
 
@@ -9,7 +10,7 @@ class Poller {
 public:
     using ChannelList = std::vector<Channel*>;
 
-    Poller();
+    Poller(EventLoop* loop);
     ~Poller();
 
     Poller(const Poller&) = delete;
@@ -27,6 +28,7 @@ private:
 
     using EventList = std::vector<epoll_event>;
 
+    EventLoop* loop_;
     int epollfd_;
     EventList events_;
     static const int kInitEventListSize = 16;

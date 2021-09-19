@@ -1,12 +1,14 @@
-#include "Poller.h"
 #include "Channel.h"
+#include "EventLoop.h"
 #include "Log.h"
+#include "Poller.h"
 
 #include <sys/epoll.h>
 #include <unistd.h>
 
-Poller::Poller()
-    : epollfd_(::epoll_create1(EPOLL_CLOEXEC))
+Poller::Poller(EventLoop* loop)
+    : loop_(loop)
+    , epollfd_(::epoll_create1(EPOLL_CLOEXEC))
     , events_(kInitEventListSize)
 {
     if (epollfd_ < 0) {
@@ -18,6 +20,7 @@ Poller::~Poller() { ::close(epollfd_); }
 
 Poller::ChannelList Poller::poll(int timeoutMs)
 {
+    loop_->assertInOwningThread();
     int numEvents =
         ::epoll_wait(epollfd_, events_.data(), events_.size(), timeoutMs);
     if (numEvents == -1) {

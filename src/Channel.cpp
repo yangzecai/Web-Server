@@ -22,8 +22,12 @@ Channel::Channel(int fd, EventLoop* loop)
     loop_->addChannel(this);
 }
 
-// FIXME: fd_ 可能被别人 close 了
-Channel::~Channel() { loop_->removeChannel(this); }
+Channel::~Channel()
+{
+    if (fd_ != -1) {
+        close();
+    }
+}
 
 void Channel::handleEvent()
 {
@@ -73,6 +77,12 @@ void Channel::disableAll()
 {
     event_ = kNoneEvent;
     update();
+}
+
+void Channel::close()
+{
+    loop_->removeChannel(this);
+    fd_ = -1;
 }
 
 inline void Channel::update() { loop_->updateChannel(this); }

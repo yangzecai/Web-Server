@@ -28,6 +28,8 @@ public:
     void disableWrite();
     void disableAll();
 
+    void close(); // Channel 拥有者析构自觉调用
+
     int getFd() const { return fd_; }
     int getEvent() const { return event_; }
     void setRevent(int revent) { revent_ = revent; }

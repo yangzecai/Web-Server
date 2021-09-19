@@ -1,10 +1,10 @@
-#include "EventLoop.h"
 #include "Channel.h"
+#include "EventLoop.h"
 #include "Log.h"
 #include "Poller.h"
+#include "TimerQueue.h"
 
 #include <chrono>
-#include <iostream>
 
 #include <assert.h>
 
@@ -14,7 +14,8 @@ EventLoop::EventLoop()
     : threadId_(std::this_thread::get_id())
     , looping_(false)
     , quit_(false)
-    , poller_(std::make_unique<Poller>())
+    , poller_(std::make_unique<Poller>(this))
+    , timerQueue_(std::make_unique<TimerQueue>(this))
 {
     LOG_TRACE << "EventLoop is created";
     if (loopInThisThread_ != nullptr) {
@@ -31,6 +32,8 @@ void EventLoop::loop()
     assert(looping_ == false);
     assertInOwningThread();
 
+    LOG_TRACE << "EventLoop strat lopping ...";
+
     looping_ = true;
     while (!quit_) {
         std::vector<Channel*> activeChannels =
@@ -42,6 +45,11 @@ void EventLoop::loop()
     }
     looping_ = false;
     LOG_TRACE << "Eventloop stop looping";
+}
+
+void EventLoop::runAt(const TimePoint& time, const TimerCallback& cb)
+{
+    timerQueue_->addTimer(cb, time, std::chrono::seconds(0));
 }
 
 void EventLoop::addChannel(Channel* channel)
