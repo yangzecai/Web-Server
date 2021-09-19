@@ -35,13 +35,13 @@ public:
                               std::chrono::high_resolution_clock::now() + delay,
                               std::chrono::seconds(0));
     }
-    
+
     template <typename Rep, typename Period>
     void runEvery(const std::chrono::duration<Rep, Period>& interval,
                   const TimerCallback& cb)
     {
-        timerQueue_->addTimer(cb, std::chrono::high_resolution_clock::now(),
-                              interval);
+        timerQueue_->addTimer(
+            cb, std::chrono::high_resolution_clock::now() + interval, interval);
     }
 
     void addChannel(Channel* channel);
