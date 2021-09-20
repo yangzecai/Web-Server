@@ -22,12 +22,7 @@ Channel::Channel(int fd, EventLoop* loop)
     loop_->addChannel(this);
 }
 
-Channel::~Channel()
-{
-    if (fd_ != -1) {
-        close();
-    }
-}
+Channel::~Channel() {}
 
 void Channel::handleEvent()
 {

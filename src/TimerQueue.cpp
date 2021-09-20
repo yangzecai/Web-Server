@@ -90,7 +90,7 @@ void TimerQueue::resetTimer()
 void TimerQueue::addTimer(const TimerCallback& cb, const TimePoint& tp,
                           const TimeInterval& ti)
 {
-    loop_->assertInOwningThread();
+    loop_->assertInOwningThread(); // FIXME: 允许跨线程添加定时器
     if (timers_.empty() || tp < getNextExpiration()) {
         timers_.insert(std::make_unique<Timer>(cb, tp, ti));
         updateCurTime();

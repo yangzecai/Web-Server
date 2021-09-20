@@ -1,12 +1,12 @@
 #include "Channel.h"
 #include "EventLoop.h"
 #include "Log.h"
+#include "PendingFuncQueue.h"
 #include "Poller.h"
 #include "TimerQueue.h"
 
 #include <chrono>
-
-#include <assert.h>
+#include <cassert>
 
 thread_local EventLoop* EventLoop::loopInThisThread_ = nullptr;
 
@@ -16,6 +16,7 @@ EventLoop::EventLoop()
     , quit_(false)
     , poller_(std::make_unique<Poller>(this))
     , timerQueue_(std::make_unique<TimerQueue>(this))
+    , funcQueue_(std::make_unique<PendingFuncQueue>(this))
 {
     LOG_TRACE << "EventLoop is created";
     if (loopInThisThread_ != nullptr) {
@@ -42,14 +43,29 @@ void EventLoop::loop()
         for (Channel* channel : activeChannels) {
             channel->handleEvent();
         }
+        funcQueue_->callPendingFunc();
     }
     looping_ = false;
     LOG_TRACE << "Eventloop stop looping";
 }
 
-void EventLoop::runAt(const TimePoint& time, const TimerCallback& cb)
+void EventLoop::runAt(const TimePoint& time, const CallbackFunc& cb)
 {
     timerQueue_->addTimer(cb, time, std::chrono::seconds(0));
+}
+
+void EventLoop::runInLoop(const CallbackFunc& cb)
+{
+    if (isInOwningThread()) {
+        cb();
+    } else {
+        queueInLoop(cb);
+    }
+}
+
+void EventLoop::queueInLoop(const CallbackFunc& cb)
+{
+    funcQueue_->enqueue(cb);
 }
 
 void EventLoop::addChannel(Channel* channel)
