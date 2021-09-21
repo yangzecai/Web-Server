@@ -39,6 +39,16 @@ void TimerQueue::updateCurTime()
     curTime_->updateExpiration(std::chrono::high_resolution_clock::now());
 }
 
+void TimerQueue::readTimerfd()
+{
+    uint64_t unused;
+    ssize_t n = ::read(timerfd_, &unused, sizeof(unused));
+    if (n != sizeof(unused)) {
+        LOG_FATAL << "TimerQueue::readTimerfd reads " << n
+                  << " bytes instead of " << sizeof(unused);
+    }
+}
+
 const TimerQueue::TimePoint& TimerQueue::getCurTime() const
 {
     return curTime_->getExpiration();
@@ -87,10 +97,10 @@ void TimerQueue::resetTimer()
     }
 }
 
-void TimerQueue::addTimer(const TimerCallback& cb, const TimePoint& tp,
-                          const TimeInterval& ti)
+void TimerQueue::addTimerInLoop(const TimerCallback& cb, const TimePoint& tp,
+                                const TimeInterval& ti)
 {
-    loop_->assertInOwningThread(); // FIXME: 允许跨线程添加定时器
+    loop_->assertInOwningThread();
     if (timers_.empty() || tp < getNextExpiration()) {
         timers_.insert(std::make_unique<Timer>(cb, tp, ti));
         updateCurTime();
@@ -100,10 +110,18 @@ void TimerQueue::addTimer(const TimerCallback& cb, const TimePoint& tp,
     }
 }
 
+void TimerQueue::addTimer(const TimerCallback& cb, const TimePoint& tp,
+                          const TimeInterval& ti)
+{
+    loop_->runInLoop(std::bind(&TimerQueue::addTimerInLoop, this, cb, tp, ti));
+}
+
 void TimerQueue::handleRead()
 {
+    LOG_TRACE << "TimerQueue::handleRead";
     loop_->assertInOwningThread();
     updateCurTime();
+    readTimerfd();
     std::vector<TimerPtr> expired = getExpiredAndRemove();
     for (size_t i = 0; i < expired.size(); ++i) {
         expired[i]->callTimerCallback();

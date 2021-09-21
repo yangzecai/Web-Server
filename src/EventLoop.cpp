@@ -1,12 +1,12 @@
-#include "Channel.h"
 #include "EventLoop.h"
+#include "Channel.h"
 #include "Log.h"
 #include "PendingFuncQueue.h"
 #include "Poller.h"
 #include "TimerQueue.h"
 
-#include <chrono>
 #include <cassert>
+#include <chrono>
 
 thread_local EventLoop* EventLoop::loopInThisThread_ = nullptr;
 
@@ -17,6 +17,7 @@ EventLoop::EventLoop()
     , poller_(std::make_unique<Poller>(this))
     , timerQueue_(std::make_unique<TimerQueue>(this))
     , funcQueue_(std::make_unique<PendingFuncQueue>(this))
+    , callingPendingFunc_(false)
 {
     LOG_TRACE << "EventLoop is created";
     if (loopInThisThread_ != nullptr) {
@@ -43,15 +44,37 @@ void EventLoop::loop()
         for (Channel* channel : activeChannels) {
             channel->handleEvent();
         }
+        callingPendingFunc_ = true;
         funcQueue_->callPendingFunc();
+        callingPendingFunc_ = false;
     }
     looping_ = false;
     LOG_TRACE << "Eventloop stop looping";
 }
 
+void EventLoop::quit()
+{
+    quit_ = true;
+    if (!isInOwningThread()) {
+        wakeup();
+    }
+}
+
 void EventLoop::runAt(const TimePoint& time, const CallbackFunc& cb)
 {
-    timerQueue_->addTimer(cb, time, std::chrono::seconds(0));
+    timerQueue_->addTimer(cb, time, std::chrono::nanoseconds(0));
+}
+
+void EventLoop::runAfter(const TimeInterval& delay, const CallbackFunc& cb)
+{
+    timerQueue_->addTimer(cb, std::chrono::high_resolution_clock::now() + delay,
+                          std::chrono::nanoseconds(0));
+}
+
+void EventLoop::runEvery(const TimeInterval& interval, const CallbackFunc& cb)
+{
+    timerQueue_->addTimer(
+        cb, std::chrono::high_resolution_clock::now() + interval, interval);
 }
 
 void EventLoop::runInLoop(const CallbackFunc& cb)
@@ -66,6 +89,9 @@ void EventLoop::runInLoop(const CallbackFunc& cb)
 void EventLoop::queueInLoop(const CallbackFunc& cb)
 {
     funcQueue_->enqueue(cb);
+    if (!isInOwningThread() || callingPendingFunc_) {
+        wakeup();
+    }
 }
 
 void EventLoop::addChannel(Channel* channel)
@@ -96,6 +122,10 @@ inline void EventLoop::assertInOwningThread()
 
 void EventLoop::abortNotInOwningThread()
 {
-    LOG_FATAL << "Eventloop " << loopInThisThread_
-              << " is not called in the owing thread";
+    LOG_FATAL << "Eventloop " << this << " is not called in the owing thread";
+}
+
+void EventLoop::wakeup()
+{
+    funcQueue_->notify();
 }

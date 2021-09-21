@@ -16,13 +16,16 @@ public:
     PendingFuncQueue(EventLoop* loop);
     ~PendingFuncQueue();
 
+    PendingFuncQueue(const PendingFuncQueue&) = delete;
+    PendingFuncQueue& operator=(const PendingFuncQueue&) = delete;
+
     void enqueue(const CallbackFunc& cb);
     void callPendingFunc();
+    void notify();
 
 private:
     int createEventfdOrDie() const;
     void handleRead();
-    void notify();
 
     EventLoop* loop_;
     int eventfd_;

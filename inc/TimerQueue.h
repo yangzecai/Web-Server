@@ -32,11 +32,14 @@ private:
     int createTimerfdOrDie() const;
     void handleRead();
     void updateCurTime();
+    void readTimerfd();
     const TimePoint& getCurTime() const;
     const TimePoint& getNextExpiration() const;
     std::vector<TimerPtr> getExpiredAndRemove();
     itimerspec getIntervalFromNowToNextExpiration() const;
     void resetTimer();
+    void addTimerInLoop(const TimerCallback& cb, const TimePoint& tp,
+                        const TimeInterval& ti);
 
     class TimerPtrCmp {
     public:

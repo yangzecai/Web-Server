@@ -25,13 +25,8 @@ PendingFuncQueue::~PendingFuncQueue()
 
 void PendingFuncQueue::enqueue(const CallbackFunc& cb)
 {
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        funcQueue_.push_back(cb);
-    }
-    if (!loop_->isInOwningThread() || callingPendingFunc_) {
-        notify();
-    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    funcQueue_.push_back(cb);
 }
 
 int PendingFuncQueue::createEventfdOrDie() const
@@ -59,6 +54,7 @@ void PendingFuncQueue::callPendingFunc()
 
 void PendingFuncQueue::handleRead()
 {
+    LOG_TRACE << "PendingFuncQueue::handleRead";
     uint64_t unused;
     ssize_t n = ::read(eventfd_, &unused, sizeof(unused));
     if (n != sizeof(unused)) {

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "TimerQueue.h"
-
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -12,11 +10,13 @@
 class Poller;
 class Channel;
 class PendingFuncQueue;
+class TimerQueue;
 
 class EventLoop {
 public:
     using CallbackFunc = std::function<void()>;
     using TimePoint = std::chrono::high_resolution_clock::time_point;
+    using TimeInterval = std::chrono::nanoseconds;
 
     EventLoop();
     ~EventLoop();
@@ -25,26 +25,11 @@ public:
     EventLoop& operator=(const EventLoop&) = delete;
 
     void loop();
-    void quit() { quit_ = true; }
+    void quit();
 
     void runAt(const TimePoint& time, const CallbackFunc& cb);
-
-    template <typename Rep, typename Period>
-    void runAfter(const std::chrono::duration<Rep, Period>& delay,
-                  const CallbackFunc& cb)
-    {
-        timerQueue_->addTimer(cb,
-                              std::chrono::high_resolution_clock::now() + delay,
-                              std::chrono::seconds(0));
-    }
-
-    template <typename Rep, typename Period>
-    void runEvery(const std::chrono::duration<Rep, Period>& interval,
-                  const CallbackFunc& cb)
-    {
-        timerQueue_->addTimer(
-            cb, std::chrono::high_resolution_clock::now() + interval, interval);
-    }
+    void runAfter(const TimeInterval& delay, const CallbackFunc& cb);
+    void runEvery(const TimeInterval& interval, const CallbackFunc& cb);
 
     void runInLoop(const CallbackFunc& cb);
     void queueInLoop(const CallbackFunc& cb);
@@ -59,7 +44,6 @@ public:
 private:
     void abortNotInOwningThread();
     void wakeup();
-    void enqueuePendingFuncQueue(const CallbackFunc& cb);
 
     std::thread::id threadId_;
     bool looping_;
@@ -67,6 +51,7 @@ private:
     std::unique_ptr<Poller> poller_;
     std::unique_ptr<TimerQueue> timerQueue_;
     std::unique_ptr<PendingFuncQueue> funcQueue_;
+    bool callingPendingFunc_;
 
     static const int kPollTimeoutMs = 10000;
     static thread_local EventLoop* loopInThisThread_;
