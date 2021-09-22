@@ -17,8 +17,9 @@ public:
 
 class IPv4Address : public Address {
 public:
+    IPv4Address() {}
     IPv4Address(const char* ip, uint16_t port);
-    IPv4Address(bool loopbackOnly, uint16_t port);
+    IPv4Address(bool loopbackOnly, uint16_t port);  // FIXME : bug
     IPv4Address(const sockaddr* addr, socklen_t socklen);
 
     const sockaddr* getSockAddr() const override

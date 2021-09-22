@@ -1,4 +1,5 @@
 #include "Socket.h"
+#include "Address.h"
 #include "Log.h"
 
 #include <fcntl.h>
@@ -86,18 +87,23 @@ void Socket::listenOrDie()
     }
 }
 
-int Socket::acceptOrDie(Address& clientAddr)
+int Socket::acceptOrDie(Address* clientAddr)
 {
     sockaddr addr;
-    socklen_t addrlen;
+    socklen_t addrlen = sizeof(addr);
     int clientFd = ::accept(fd_, &addr, &addrlen);
     if (clientFd < 0) {
-        LOG_SYSFATAL << "Socket::acceptOrDie";
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            LOG_SYSERROR << "Socket::acceptOrDie";
+            return -1;
+        } else {
+            LOG_SYSFATAL << "Socket::acceptOrDie";
+        }
     }
     if (addr.sa_family == AF_INET) {
-        clientAddr = IPv4Address(&addr, addrlen);
+        *clientAddr = IPv4Address(&addr, addrlen);
     } else if (addr.sa_family == AF_INET6) {
-        clientAddr = IPv6Address(&addr, addrlen);
+        *clientAddr = IPv6Address(&addr, addrlen);
     }
     return clientFd;
 }
@@ -132,7 +138,7 @@ int Socket::fcntlOrDie(int cmd, ...)
 void Socket::setsockoptOrDie(int level, int optname, bool on)
 {
     int optval = on ? 1 : 0;
-    if (!::setsockopt(fd_, level, optname, &optval, sizeof(optval))) {
+    if (0 != ::setsockopt(fd_, level, optname, &optval, sizeof(optval))) {
         LOG_SYSFATAL << "Socket::setsockoptOrDie";
     }
 }

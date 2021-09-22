@@ -1,14 +1,14 @@
 #pragma once
 
-#include "Address.h"
-
 #include <sys/socket.h>
 #include <sys/types.h>
+
+class Address;
 
 class Socket {
 public:
     Socket(int sockfd);
-    Socket(int domain = AF_INET, int type = SOCK_STREAM);
+    Socket(int domain, int type);
     ~Socket();
 
     Socket(const Socket&) = delete;
@@ -18,7 +18,7 @@ public:
 
     void bind(const Address& addr) { bindOrDie(addr); }
     void listen() { listenOrDie(); }
-    int accept(Address& clientAddr) { return acceptOrDie(clientAddr); }
+    int accept(Address* clientAddr) { return acceptOrDie(clientAddr); }
     void connect(const Address& addr) { connectOrDie(addr); }
     void close();
     void shutdownWrite() { shutdownOrDie(SHUT_WR); }
@@ -35,7 +35,7 @@ private:
     int socketOrDie(int domain, int type);
     void bindOrDie(const Address& addr);
     void listenOrDie();
-    int acceptOrDie(Address& clientAddr);
+    int acceptOrDie(Address* clientAddr);
     void connectOrDie(const Address& addr);
     void closeOrDie();
     void shutdownOrDie(int how);
