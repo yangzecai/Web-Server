@@ -1,54 +1,74 @@
 #include "Address.h"
-#include "Log.h"
+#include "AddressImpl.h"
 
-#include <cstring>
+#include <cassert>
 
-#include <arpa/inet.h>
-
-IPv4Address::IPv4Address(const char* ip, uint16_t port)
+Address::Address()
+    : impl(nullptr)
 {
-    std::memset(&addr_, 0, sizeof(addr_));
-    addr_.sin_family = AF_INET;
-    addr_.sin_port = ::htons(port);
-    if (::inet_pton(AF_INET, ip, &addr_.sin_addr) <= 0) {
-        LOG_SYSFATAL << "IPv4Address::IPv4Address";
+}
+
+Address::Address(int family, const std::string& ip, uint16_t port)
+{
+    if (family == AF_INET) {
+        impl = std::make_shared<IPv4AddressImpl>(ip, port);
+    } else if (family == AF_INET6) {
+        impl = std::make_shared<IPv6AddressImpl>(ip, port);
+    } else {
+        assert(false);
     }
 }
 
-IPv4Address::IPv4Address(bool loopbackOnly, uint16_t port)
+Address::Address(int family, uint16_t port, bool loopbackOnly)
 {
-    std::memset(&addr_, 0, sizeof(addr_));
-    addr_.sin_family = AF_INET;
-    addr_.sin_port = ::htons(port);
-    addr_.sin_addr.s_addr = loopbackOnly ? INADDR_LOOPBACK : INADDR_ANY;
-}
-
-IPv4Address::IPv4Address(const sockaddr* addr, socklen_t socklen)
-{
-    assert(socklen == sizeof(sockaddr_in) && addr->sa_family == AF_INET);
-    std::memcpy(&addr_, addr, socklen);
-}
-
-IPv6Address::IPv6Address(const char* ip, uint16_t port)
-{
-    std::memset(&addr_, 0, sizeof(addr_));
-    addr_.sin6_family = AF_INET6;
-    addr_.sin6_port = ::htons(port);
-    if (::inet_pton(AF_INET6, ip, &addr_.sin6_addr) <= 0) {
-        LOG_SYSFATAL << "IPv6Address::IPv6Address";
+    if (family == AF_INET) {
+        impl = std::make_shared<IPv4AddressImpl>(port, loopbackOnly);
+    } else if (family == AF_INET6) {
+        impl = std::make_shared<IPv6AddressImpl>(port, loopbackOnly);
+    } else {
+        assert(false);
     }
 }
 
-IPv6Address::IPv6Address(bool loopbackOnly, uint16_t port)
+Address::Address(const sockaddr* addr, socklen_t socklen)
 {
-    std::memset(&addr_, 0, sizeof(addr_));
-    addr_.sin6_family = AF_INET6;
-    addr_.sin6_port = ::htons(port);
-    addr_.sin6_addr = loopbackOnly ? in6addr_loopback : in6addr_any;
+    if (socklen == sizeof(sockaddr_in)) {
+        impl = std::make_shared<IPv4AddressImpl>(addr, socklen);
+    } else if (socklen == sizeof(sockaddr_in6)) {
+        impl = std::make_shared<IPv6AddressImpl>(addr, socklen);
+    } else {
+        assert(false);
+    }
 }
 
-IPv6Address::IPv6Address(const sockaddr* addr, socklen_t socklen)
+Address Address::createIPv4Address(const std::string& ip, uint16_t port)
 {
-    assert(socklen == sizeof(sockaddr_in6) && addr->sa_family == AF_INET);
-    std::memcpy(&addr_, addr, socklen);
+    return Address(AF_INET, ip, port);
+}
+Address Address::createIPv4Address(uint16_t port, bool loopbackOnly)
+{
+    return Address(AF_INET, port, loopbackOnly);
+}
+Address Address::createIPv6Address(const std::string& ip, uint16_t port)
+{
+    return Address(AF_INET6, ip, port);
+}
+Address Address::createIPv6Address(uint16_t port, bool loopbackOnly)
+{
+    return Address(AF_INET6, port, loopbackOnly);
+}
+
+const sockaddr* Address::getSockAddr() const
+{
+    return impl->getSockAddr();
+}
+
+const socklen_t Address::getSockLen() const
+{
+    return impl->getSockLen();
+}
+
+std::string Address::getAddressStr() const
+{
+    return impl->getAddressStr();
 }

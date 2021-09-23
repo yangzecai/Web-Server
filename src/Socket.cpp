@@ -100,11 +100,7 @@ int Socket::acceptOrDie(Address* clientAddr)
             LOG_SYSFATAL << "Socket::acceptOrDie";
         }
     }
-    if (addr.sa_family == AF_INET) {
-        *clientAddr = IPv4Address(&addr, addrlen);
-    } else if (addr.sa_family == AF_INET6) {
-        *clientAddr = IPv6Address(&addr, addrlen);
-    }
+    *clientAddr = Address(&addr, addrlen);
     return clientFd;
 }
 

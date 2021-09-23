@@ -2,6 +2,7 @@
 #include "EventLoop.h"
 #include "Address.h"
 #include "unistd.h"
+#include "Log.h"
 
 void newConnFunc(Socket&& socket, const Address& addr)
 {
@@ -11,8 +12,9 @@ void newConnFunc(Socket&& socket, const Address& addr)
 
 int main()
 {
-    EventLoop loop;   
-    Acceptor acceptor(&loop, IPv4Address("127.0.0.1", 9981));
+    log::setLevel(log::TRACE);
+    EventLoop loop;
+    Acceptor acceptor(&loop, Address::createIPv4Address(9981));
     acceptor.setNewConnCallback(newConnFunc);
     acceptor.listen();
 

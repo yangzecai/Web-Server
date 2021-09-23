@@ -1,12 +1,13 @@
 #include "Acceptor.h"
-#include "EventLoop.h"
 #include "Address.h"
+#include "EventLoop.h"
+#include "Log.h"
 
 #include <unistd.h>
 
 Acceptor::Acceptor(EventLoop* loop, const Address& addr)
     : loop_(loop)
-    , socket_(AF_INET, SOCK_STREAM)
+    , socket_(addr.getFamily(), SOCK_STREAM)
     , channel_(socket_.getFd(), loop)
 {
     socket_.setNonblock(true);
@@ -31,14 +32,17 @@ void Acceptor::listen()
 void Acceptor::handleRead()
 {
     loop_->assertInOwningThread();
-    IPv4Address addr;
+    Address addr;
     int connfd = -1;
-    while((connfd = socket_.accept(&addr)) != -1) {
+    while ((connfd = socket_.accept(&addr)) != -1) {
+        LOG_INFO << "Acceptor::handleRead new connect from "
+                 << addr.getAddressStr();
         if (newConnCallback_) {
-            newConnCallback_(Socket(connfd), addr);
+            Socket connSocket = Socket(connfd);
+            connSocket.setNonblock(true);
+            newConnCallback_(std::move(connSocket), addr);
         } else {
             ::close(connfd);
         }
     }
 }
-
