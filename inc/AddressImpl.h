@@ -43,7 +43,7 @@ public:
         return reinterpret_cast<const sockaddr*>(&addr_);
     }
     const socklen_t getSockLen() const override { return sizeof(addr_); }
-    std::string getAddressStr() const;  // FIXME: 未实现
+    std::string getAddressStr() const;
 
 private:
     sockaddr_in6 addr_;

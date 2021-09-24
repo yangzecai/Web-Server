@@ -42,6 +42,7 @@ void Channel::handleEvent()
             writeCallback_();
         }
     }
+    // FIXME: closeCallback_();
 }
 
 void Channel::enableRead()

@@ -10,7 +10,7 @@ class Address;
 
 class Acceptor {
 public:
-    using NewConnCallback = std::function<void(Socket&&, const Address&)>;
+    using NewConnCallback = std::function<void(int, const Address&)>;
 
     Acceptor(EventLoop* loop, const Address& addr);
     ~Acceptor();
@@ -20,10 +20,7 @@ public:
 
     void listen();
 
-    void setNewConnCallback(const NewConnCallback& cb)
-    {
-        newConnCallback_ = cb;
-    }
+    void setNewConnCallback(const NewConnCallback& cb);
 
 private:
     void handleRead();
@@ -33,3 +30,8 @@ private:
     Channel channel_;
     NewConnCallback newConnCallback_;
 };
+
+inline void Acceptor::setNewConnCallback(const NewConnCallback& cb)
+{
+    newConnCallback_ = cb;
+}

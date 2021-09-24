@@ -27,6 +27,24 @@ Socket::~Socket()
     }
 }
 
+void Socket::swap(Socket& rhs) noexcept
+{
+    using std::swap;
+    swap(fd_, rhs.fd_);
+}
+
+Socket::Socket(Socket&& rhs)
+    : fd_(rhs.fd_)
+{
+    rhs.fd_ = -1;
+}
+
+Socket& Socket::operator=(Socket&& rhs)
+{
+    swap(rhs);
+    return *this;
+}
+
 void Socket::close()
 {
     if (::close(fd_) < 0) {

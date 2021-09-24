@@ -14,6 +14,9 @@ public:
     Socket(const Socket&) = delete;
     Socket& operator=(const Socket&) = delete;
 
+    Socket(Socket&& rhs);
+    Socket& operator=(Socket&& rhs);
+
     int getFd() const { return fd_; }
 
     void bind(const Address& addr) { bindOrDie(addr); }
@@ -32,6 +35,8 @@ public:
     bool isValid() { return fd_ != -1; }
 
 private:
+    void swap(Socket& rhs) noexcept;
+
     int socketOrDie(int domain, int type);
     void bindOrDie(const Address& addr);
     void listenOrDie();

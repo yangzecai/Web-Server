@@ -1,7 +1,6 @@
 #include "Acceptor.h"
 #include "Address.h"
 #include "EventLoop.h"
-#include "Log.h"
 
 #include <unistd.h>
 
@@ -35,12 +34,8 @@ void Acceptor::handleRead()
     Address addr;
     int connfd = -1;
     while ((connfd = socket_.accept(&addr)) != -1) {
-        LOG_INFO << "Acceptor::handleRead new connect from "
-                 << addr.getAddressStr();
         if (newConnCallback_) {
-            Socket connSocket = Socket(connfd);
-            connSocket.setNonblock(true);
-            newConnCallback_(std::move(connSocket), addr);
+            newConnCallback_(connfd, addr);
         } else {
             ::close(connfd);
         }
