@@ -15,6 +15,7 @@ TcpConnection::TcpConnection(EventLoop* loop, int connfd, const Address& addr)
     , connectionCallback_()
     , messageCallback_()
 {
+    connSocket_->setNonblock(true);
     channel_->setReadCallback(std::bind(&TcpConnection::handleRead, this));
     channel_->setCloseCallback(std::bind(&TcpConnection::handleClose, this));
     channel_->setErrorCallback(std::bind(&TcpConnection::handleError, this));
@@ -35,9 +36,9 @@ void TcpConnection::establish()
 
 void TcpConnection::handleRead()
 {
-    LOG_TRACE << "TcpConnection::handleRead";
     char buf[65536];
     size_t len = ::recv(connSocket_->getFd(), buf, sizeof(buf), 0);
+    LOG_TRACE << "TcpConnection::handleRead read " << len << " bytes";
     if (len > 0) {
         messageCallback_(shared_from_this(), buf, len);
     } else if (len == 0) {

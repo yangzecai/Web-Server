@@ -19,6 +19,11 @@ TcpServer::TcpServer(EventLoop* loop, const Address& addr)
         std::bind(&TcpServer::addConnection, this, _1, _2));
 }
 
+TcpServer::~TcpServer()
+{
+    assert(connections_.empty());
+}
+
 void TcpServer::start()
 {
     LOG_TRACE << "TcpServer::start";
@@ -42,7 +47,7 @@ void TcpServer::addConnection(int connfd, const Address& clientAddr)
 
 void TcpServer::removeConnection(const TcpConnectionPtr& connPtr)
 {
-    LOG_INFO << "TcpServer::removeConnection remove connect from"
+    LOG_INFO << "TcpServer::removeConnection remove connect from "
              << connPtr->getClientAddr().getAddressStr();
     loop_->assertInOwningThread();
     connections_.erase(connPtr);

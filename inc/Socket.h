@@ -44,8 +44,6 @@ private:
     void connectOrDie(const Address& addr);
     void closeOrDie();
     void shutdownOrDie(int how);
-
-    int fcntlOrDie(int cmd, ...);
     void setsockoptOrDie(int level, int optname, bool on);
 
     int fd_;

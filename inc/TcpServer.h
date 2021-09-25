@@ -14,7 +14,7 @@ class Acceptor;
 class TcpServer {
 public:
     TcpServer(EventLoop* loop, const Address& addr);
-    ~TcpServer() {}
+    ~TcpServer();
 
     TcpServer(const TcpServer&) = delete;
     TcpServer& operator=(const TcpServer&) = delete;

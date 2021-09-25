@@ -55,9 +55,14 @@ void Socket::close()
 
 void Socket::setNonblock(bool on)
 {
-    int arg = fcntlOrDie(F_GETFL);
+    int arg = ::fcntl(fd_, F_GETFL);
+    if (arg == -1) {
+        LOG_SYSFATAL << "Socket::setNonblock";
+    }
     arg = on ? arg | O_NONBLOCK : arg & ~O_NONBLOCK;
-    fcntlOrDie(F_SETFL, arg);
+    if (::fcntl(fd_, F_SETFL, arg) == -1) {
+        LOG_SYSFATAL << "Socket::setNonblock";
+    }
 }
 
 void Socket::setReuseAddr(bool on)
@@ -134,19 +139,6 @@ void Socket::shutdownOrDie(int how)
     if (::shutdown(fd_, how) != 0) {
         LOG_SYSFATAL << "Socket::shutdownOrDie";
     }
-}
-
-int Socket::fcntlOrDie(int cmd, ...)
-{
-
-    va_list va;
-    va_start(va, cmd);
-    int ret = ::fcntl(fd_, cmd, va);
-    va_end(va);
-    if (ret == -1) {
-        LOG_SYSFATAL << "Socket::fcntlOrDie";
-    }
-    return ret;
 }
 
 void Socket::setsockoptOrDie(int level, int optname, bool on)
