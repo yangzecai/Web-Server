@@ -14,6 +14,12 @@ void onConnection(const TcpConnectionPtr& conn)
            conn->getClientAddr().getAddressStr().c_str());
 }
 
+void onClose(const TcpConnectionPtr& conn)
+{
+    printf("onClose() : disconnect connection from %s\n",
+           conn->getClientAddr().getAddressStr().c_str());
+}
+
 void onMessage(const TcpConnectionPtr& conn, Buffer& recvBuffer)
 {
     printf("onMessage(): received %zd bytes from connection [%s]\n",
@@ -33,6 +39,7 @@ int main()
 
     TcpServer server(&loop, listenAddr);
     server.setConnectionCallback(onConnection);
+    server.setCloseCallback(onClose);
     server.setMessageCallback(onMessage);
     server.start();
 

@@ -11,6 +11,7 @@ class Socket;
 class EventLoop;
 
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
+friend class TcpServer;
 public:
     TcpConnection(EventLoop* loop, int connfd, const Address& addr);
     ~TcpConnection();
@@ -18,12 +19,8 @@ public:
     TcpConnection(const TcpConnection&) = delete;
     TcpConnection& operator=(const TcpConnection&) = delete;
 
-    void setConnectionCallback(const ConnectionCallback& cb);
     void setMessageCallback(const MessageCallback& cb);
-    void setCloseCallback(const CloseCallback& cb);
-
-    void establish();
-
+    
     const Address& getClientAddr() { return clientAddr_; }
 
 private:
@@ -31,6 +28,10 @@ private:
     void handleError();
     void handleClose();
     void handleWrite();
+
+    void setConnectionCallback(const ConnectionCallback& cb);
+    void setCloseCallback(const CloseCallback& cb);
+    void establish();
 
     EventLoop* loop_;
     std::unique_ptr<Socket> connSocket_;

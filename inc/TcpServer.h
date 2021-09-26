@@ -21,7 +21,7 @@ public:
 
     void setConnectionCallback(const ConnectionCallback& cb);
     void setMessageCallback(const MessageCallback& cb);
-    // FIXME: setCloseCallback
+    void setCloseCallback(const CloseCallback& cb);
 
     void start();
 
@@ -33,6 +33,7 @@ private:
     std::unique_ptr<Acceptor> acceptor_;
     ConnectionCallback connectionCallback_;
     MessageCallback messageCallback_;
+    CloseCallback closeCallback_;
     std::set<TcpConnectionPtr> connections_;
 };
 
@@ -44,4 +45,9 @@ inline void TcpServer::setConnectionCallback(const ConnectionCallback& cb)
 inline void TcpServer::setMessageCallback(const MessageCallback& cb)
 {
     messageCallback_ = cb;
+}
+
+inline void TcpServer::setCloseCallback(const CloseCallback& cb)
+{
+    closeCallback_ = cb;
 }

@@ -12,6 +12,7 @@ TcpServer::TcpServer(EventLoop* loop, const Address& addr)
     , acceptor_(std::make_unique<Acceptor>(loop, addr))
     , connectionCallback_()
     , messageCallback_()
+    , closeCallback_()
     , connections_()
 {
     using namespace std::placeholders;
@@ -26,6 +27,9 @@ TcpServer::~TcpServer()
 
 void TcpServer::start()
 {
+    assert(connectionCallback_ != nullptr);
+    assert(messageCallback_ != nullptr);
+    assert(closeCallback_ != nullptr);
     LOG_TRACE << "TcpServer::start";
     loop_->assertInOwningThread();
     acceptor_->listen();
@@ -41,7 +45,10 @@ void TcpServer::addConnection(int connfd, const Address& clientAddr)
     connections_.insert(conn);
     conn->setConnectionCallback(connectionCallback_);
     conn->setMessageCallback(messageCallback_);
-    conn->setCloseCallback(std::bind(&TcpServer::removeConnection, this, _1));
+    conn->setCloseCallback([this](const TcpConnectionPtr& conn) {
+        closeCallback_(conn);
+        removeConnection(conn);
+    });
     conn->establish();
 }
 
