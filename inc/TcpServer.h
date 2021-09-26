@@ -21,6 +21,7 @@ public:
 
     void setConnectionCallback(const ConnectionCallback& cb);
     void setMessageCallback(const MessageCallback& cb);
+    // FIXME: setCloseCallback
 
     void start();
 

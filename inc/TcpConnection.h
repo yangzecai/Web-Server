@@ -2,6 +2,7 @@
 
 #include "Address.h"
 #include "Callbacks.h"
+#include "Buffer.h"
 
 #include <memory>
 
@@ -38,6 +39,7 @@ private:
     ConnectionCallback connectionCallback_;
     MessageCallback messageCallback_;
     CloseCallback closeCallback_;
+    Buffer recvBuffer_;
 };
 
 inline void TcpConnection::setConnectionCallback(const ConnectionCallback& cb)

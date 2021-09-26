@@ -14,6 +14,7 @@ TcpConnection::TcpConnection(EventLoop* loop, int connfd, const Address& addr)
     , channel_(std::make_unique<Channel>(connfd, loop))
     , connectionCallback_()
     , messageCallback_()
+    , recvBuffer_()
 {
     connSocket_->setNonblock(true);
     channel_->setReadCallback(std::bind(&TcpConnection::handleRead, this));
@@ -36,11 +37,10 @@ void TcpConnection::establish()
 
 void TcpConnection::handleRead()
 {
-    char buf[65536];
-    size_t len = ::recv(connSocket_->getFd(), buf, sizeof(buf), 0);
+    size_t len = recvBuffer_.writeFromFd(connSocket_->getFd());
     LOG_TRACE << "TcpConnection::handleRead read " << len << " bytes";
     if (len > 0) {
-        messageCallback_(shared_from_this(), buf, len);
+        messageCallback_(shared_from_this(), recvBuffer_);
     } else if (len == 0) {
         handleClose();
     } else {

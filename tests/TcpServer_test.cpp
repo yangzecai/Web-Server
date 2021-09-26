@@ -1,8 +1,8 @@
 #include "Address.h"
 #include "EventLoop.h"
+#include "Log.h"
 #include "TcpConnection.h"
 #include "TcpServer.h"
-#include "Log.h"
 
 #include <cstdio>
 
@@ -14,16 +14,18 @@ void onConnection(const TcpConnectionPtr& conn)
            conn->getClientAddr().getAddressStr().c_str());
 }
 
-void onMessage(const TcpConnectionPtr& conn, const char* data, ssize_t len)
+void onMessage(const TcpConnectionPtr& conn, Buffer& recvBuffer)
 {
-    printf("onMessage(): received %zd bytes from connection [%s]\n", len,
+    printf("onMessage(): received %zd bytes from connection [%s]\n",
+           recvBuffer.getReadableBytes(),
            conn->getClientAddr().getAddressStr().c_str());
+    recvBuffer.retrieveAll();
 }
 
 int main()
 {
     log::setLevel(log::TRACE);
-    
+
     printf("main(): pid = %d\n", ::getpid());
 
     Address listenAddr(Address::createIPv4Address(9981));
