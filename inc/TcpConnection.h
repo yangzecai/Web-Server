@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Address.h"
-#include "Callbacks.h"
 #include "Buffer.h"
+#include "Callbacks.h"
 
 #include <memory>
 
@@ -11,7 +11,8 @@ class Socket;
 class EventLoop;
 
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
-friend class TcpServer;
+    friend class TcpServer;
+
 public:
     TcpConnection(EventLoop* loop, int connfd, const Address& addr);
     ~TcpConnection();
@@ -20,8 +21,12 @@ public:
     TcpConnection& operator=(const TcpConnection&) = delete;
 
     void setMessageCallback(const MessageCallback& cb);
-    
+    void setWriteCompleteCallback(const WriteCompleteCallback& cb);
+
     const Address& getClientAddr() { return clientAddr_; }
+
+    void send(const std::string& str);
+    void send(const char* str, size_t len); // FIXME: 未实现
 
 private:
     void handleRead();
@@ -33,6 +38,8 @@ private:
     void setCloseCallback(const CloseCallback& cb);
     void establish();
 
+    void sendInLoop(const std::string& str);
+
     EventLoop* loop_;
     std::unique_ptr<Socket> connSocket_;
     Address clientAddr_;
@@ -40,12 +47,20 @@ private:
     ConnectionCallback connectionCallback_;
     MessageCallback messageCallback_;
     CloseCallback closeCallback_;
+    WriteCompleteCallback writeCompleteCallback_;
     Buffer recvBuffer_;
+    Buffer sendBuffer_;
 };
 
 inline void TcpConnection::setConnectionCallback(const ConnectionCallback& cb)
 {
     connectionCallback_ = cb;
+}
+
+inline void
+TcpConnection::setWriteCompleteCallback(const WriteCompleteCallback& cb)
+{
+    writeCompleteCallback_ = cb;
 }
 
 inline void TcpConnection::setMessageCallback(const MessageCallback& cb)

@@ -22,6 +22,7 @@ public:
     void setConnectionCallback(const ConnectionCallback& cb);
     void setMessageCallback(const MessageCallback& cb);
     void setCloseCallback(const CloseCallback& cb);
+    void setWriteCompleteCallback(const WriteCompleteCallback& cb);
 
     void start();
 
@@ -34,6 +35,7 @@ private:
     ConnectionCallback connectionCallback_;
     MessageCallback messageCallback_;
     CloseCallback closeCallback_;
+    WriteCompleteCallback writeCompleteCallback_;
     std::set<TcpConnectionPtr> connections_;
 };
 
@@ -50,4 +52,9 @@ inline void TcpServer::setMessageCallback(const MessageCallback& cb)
 inline void TcpServer::setCloseCallback(const CloseCallback& cb)
 {
     closeCallback_ = cb;
+}
+
+inline void TcpServer::setWriteCompleteCallback(const WriteCompleteCallback& cb)
+{
+    writeCompleteCallback_ = cb;
 }

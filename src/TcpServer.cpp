@@ -13,6 +13,7 @@ TcpServer::TcpServer(EventLoop* loop, const Address& addr)
     , connectionCallback_()
     , messageCallback_()
     , closeCallback_()
+    , writeCompleteCallback_()
     , connections_()
 {
     using namespace std::placeholders;
@@ -44,6 +45,7 @@ void TcpServer::addConnection(int connfd, const Address& clientAddr)
     auto conn = std::make_shared<TcpConnection>(loop_, connfd, clientAddr);
     connections_.insert(conn);
     conn->setConnectionCallback(connectionCallback_);
+    conn->setWriteCompleteCallback(writeCompleteCallback_);
     conn->setMessageCallback(messageCallback_);
     conn->setCloseCallback([this](const TcpConnectionPtr& conn) {
         closeCallback_(conn);
