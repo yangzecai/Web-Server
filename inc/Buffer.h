@@ -44,8 +44,8 @@ private:
 
     void makeSpace(size_t len);
 
-    static const size_t kCheapPrepend = 8;
-    static const size_t kInitialSize = 1024;
+    static const size_t kCheapPrepend_ = 8;
+    static const size_t kInitialSize_ = 1024;
 
     std::vector<char> buffer_;
     size_t readPos_;
@@ -53,13 +53,13 @@ private:
 };
 
 inline Buffer::Buffer()
-    : buffer_(kCheapPrepend + kInitialSize)
-    , readPos_(kCheapPrepend)
-    , writePos_(kCheapPrepend)
+    : buffer_(kCheapPrepend_ + kInitialSize_)
+    , readPos_(kCheapPrepend_)
+    , writePos_(kCheapPrepend_)
 {
     assert(getReadableBytes() == 0);
-    assert(getWritableBytes() == kInitialSize);
-    assert(getPrependableBytes() == kCheapPrepend);
+    assert(getWritableBytes() == kInitialSize_);
+    assert(getPrependableBytes() == kCheapPrepend_);
 }
 
 inline void Buffer::retrieve(size_t len)
@@ -74,8 +74,8 @@ inline void Buffer::retrieve(size_t len)
 
 inline void Buffer::retrieveAll()
 {
-    readPos_ = kCheapPrepend;
-    writePos_ = kCheapPrepend;
+    readPos_ = kCheapPrepend_;
+    writePos_ = kCheapPrepend_;
 }
 
 inline void Buffer::append(const char* data, size_t len)
@@ -115,24 +115,24 @@ inline void Buffer::swap(Buffer& rhs)
 
 inline void Buffer::shrink(size_t reserve)
 {
-    std::vector<char> buf(kCheapPrepend + getReadableBytes() + reserve);
+    std::vector<char> buf(kCheapPrepend_ + getReadableBytes() + reserve);
     std::copy(beginOfReadableBytes(),
               beginOfReadableBytes() + getReadableBytes(),
-              buf.begin() + kCheapPrepend);
+              buf.begin() + kCheapPrepend_);
     buf.swap(buffer_);
 }
 
 inline void Buffer::makeSpace(size_t len)
 {
-    if (getWritableBytes() + getPrependableBytes() < len + kCheapPrepend) {
+    if (getWritableBytes() + getPrependableBytes() < len + kCheapPrepend_) {
         buffer_.resize(writePos_ + len);
     } else {
         // move readable data to the front, make space inside buffer
-        assert(kCheapPrepend < readPos_);
+        assert(kCheapPrepend_ < readPos_);
         size_t readable = getReadableBytes();
         std::copy(begin() + readPos_, begin() + writePos_,
-                  begin() + kCheapPrepend);
-        readPos_ = kCheapPrepend;
+                  begin() + kCheapPrepend_);
+        readPos_ = kCheapPrepend_;
         writePos_ = readPos_ + readable;
         assert(readable == getReadableBytes());
     }

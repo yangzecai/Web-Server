@@ -22,6 +22,8 @@ public:
     void setErrorCallback(const CallbackFunc& cb) { errorCallback_ = cb; }
     void setCloseCallback(const CallbackFunc& cb) { closeCallback_ = cb; }
 
+    bool isWriting() { return event_ & kWriteEvent; }
+
     void enableRead();
     void disableRead();
     void enableWrite();

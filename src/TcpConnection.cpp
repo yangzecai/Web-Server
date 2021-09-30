@@ -14,8 +14,11 @@ TcpConnection::TcpConnection(EventLoop* loop, int connfd, const Address& addr)
     , channel_(std::make_unique<Channel>(connfd, loop))
     , connectionCallback_()
     , messageCallback_()
+    , closeCallback_()
+    , writeCompleteCallback_()
     , recvBuffer_()
     , sendBuffer_()
+    , disconnecting_(false)
 {
     connSocket_->setNonblock(true);
     channel_->setReadCallback(std::bind(&TcpConnection::handleRead, this));
@@ -29,20 +32,68 @@ TcpConnection::~TcpConnection()
     channel_->close();
 }
 
-void TcpConnection::sendInLoop(const std::string& str)
+void TcpConnection::sendInLoop(const char* str, size_t len)
 {
     loop_->assertInOwningThread();
-    sendBuffer_.append(str);
-    channel_->enableWrite();
+    // FIXME: 在 sendBuffer 没字节的时候直接发送。
+    sendBuffer_.append(str, len);
+    if (!channel_->isWriting()) {
+        channel_->enableWrite();
+    }
+}
+
+void TcpConnection::sendInLoop(const std::string& str)
+{
+    sendInLoop(str.data(), str.size());
+}
+
+void TcpConnection::send(const char* str, size_t len)
+{
+    if (!disconnecting_) {
+        if (loop_->isInOwningThread()) {
+            sendInLoop(str, len);
+        } else {
+            loop_->queueInLoop(
+                std::bind((void (TcpConnection::*)(const std::string&)) &
+                            TcpConnection::sendInLoop,
+                        this, std::string(str, len)));
+        }
+    }
+}
+
+void TcpConnection::send(std::string&& str)
+{
+    if (!disconnecting_) {
+        if (loop_->isInOwningThread()) {
+            sendInLoop(str);
+        } else {
+            loop_->queueInLoop(
+                std::bind((void (TcpConnection::*)(const std::string&)) &
+                            TcpConnection::sendInLoop,
+                        this, std::move(str)));
+        }
+    }
 }
 
 void TcpConnection::send(const std::string& str)
 {
-    if (loop_->isInOwningThread()) {
-        sendInLoop(str);
-    } else {
-        loop_->queueInLoop(std::bind(&TcpConnection::sendInLoop, this, str));
+    std::string tmpStr = str;
+    send(std::move(tmpStr));
+}
+
+void TcpConnection::shutdownInLoop()
+{
+    loop_->assertInOwningThread();
+    if (!channel_->isWriting()) {
+        LOG_TRACE << "TcpConnection::shutdownInLoop";
+        connSocket_->shutdownWrite();
     }
+}
+
+void TcpConnection::shutdown()
+{
+    disconnecting_ = true;
+    loop_->runInLoop(std::bind(&TcpConnection::shutdownInLoop, this));
 }
 
 void TcpConnection::establish()
@@ -90,6 +141,9 @@ void TcpConnection::handleWrite()
     if (sendBuffer_.getReadableBytes() == 0) {
         channel_->disableWrite();
         writeCompleteCallback_(shared_from_this());
+        if (disconnecting_) {
+            shutdownInLoop();
+        }
     } else {
         LOG_TRACE << "TcpConnection::handleWrite "
                   << sendBuffer_.getReadableBytes()

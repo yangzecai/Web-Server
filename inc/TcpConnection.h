@@ -26,7 +26,10 @@ public:
     const Address& getClientAddr() { return clientAddr_; }
 
     void send(const std::string& str);
-    void send(const char* str, size_t len); // FIXME: 未实现
+    void send(std::string&& str);
+    void send(const char* str, size_t len);
+
+    void shutdown();
 
 private:
     void handleRead();
@@ -39,6 +42,9 @@ private:
     void establish();
 
     void sendInLoop(const std::string& str);
+    void sendInLoop(const char* str, size_t len);
+
+    void shutdownInLoop();
 
     EventLoop* loop_;
     std::unique_ptr<Socket> connSocket_;
@@ -50,6 +56,7 @@ private:
     WriteCompleteCallback writeCompleteCallback_;
     Buffer recvBuffer_;
     Buffer sendBuffer_;
+    bool disconnecting_; // FIXME: atomic
 };
 
 inline void TcpConnection::setConnectionCallback(const ConnectionCallback& cb)
