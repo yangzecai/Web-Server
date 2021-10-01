@@ -16,10 +16,10 @@
 #define LOG_FATAL log::LogLine(__FILE__, __LINE__, log::FATAL).getStream()
 #define LOG_SYSERROR                                                           \
     log::LogLine(__FILE__, __LINE__, log::ERROR).getStream()                   \
-        << log::strerror() << ' '
+        << log::strerror(errno) << ' '
 #define LOG_SYSFATAL                                                           \
     log::LogLine(__FILE__, __LINE__, log::FATAL).getStream()                   \
-        << log::strerror() << ' '
+        << log::strerror(errno) << ' '
 
 class timeval;
 
@@ -34,7 +34,7 @@ enum LogLevel
     ERROR,
     FATAL
 };
-const char* strerror();
+const char* strerror(int saveErrno);
 LogLevel getLevel();
 void setLevel(LogLevel);
 

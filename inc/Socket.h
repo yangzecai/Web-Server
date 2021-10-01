@@ -34,6 +34,8 @@ public:
 
     bool isValid() { return fd_ != -1; }
 
+    int getSocketError();
+    
 private:
     void swap(Socket& rhs) noexcept;
 

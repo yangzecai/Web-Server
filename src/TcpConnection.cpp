@@ -6,6 +6,7 @@
 
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 TcpConnection::TcpConnection(EventLoop* loop, int connfd, const Address& addr)
     : loop_(loop)
@@ -55,8 +56,8 @@ void TcpConnection::send(const char* str, size_t len)
         } else {
             loop_->queueInLoop(
                 std::bind((void (TcpConnection::*)(const std::string&)) &
-                            TcpConnection::sendInLoop,
-                        this, std::string(str, len)));
+                              TcpConnection::sendInLoop,
+                          this, std::string(str, len)));
         }
     }
 }
@@ -69,8 +70,8 @@ void TcpConnection::send(std::string&& str)
         } else {
             loop_->queueInLoop(
                 std::bind((void (TcpConnection::*)(const std::string&)) &
-                            TcpConnection::sendInLoop,
-                        this, std::move(str)));
+                              TcpConnection::sendInLoop,
+                          this, std::move(str)));
         }
     }
 }
@@ -118,7 +119,8 @@ void TcpConnection::handleRead()
 
 void TcpConnection::handleError()
 {
-    LOG_FATAL << "TcpConnection::handleError";
+    LOG_ERROR << "TcpConnection::handleError "
+              << log::strerror(connSocket_->getSocketError());
 }
 
 void TcpConnection::handleClose()
@@ -130,23 +132,30 @@ void TcpConnection::handleClose()
 
 void TcpConnection::handleWrite()
 {
-    ssize_t len =
-        ::send(connSocket_->getFd(), sendBuffer_.beginOfReadableBytes(),
-               sendBuffer_.getReadableBytes(), 0);
-    LOG_TRACE << "TcpConnection::handleWrite write " << len << " bytes";
-    if (len < 0) {
-        LOG_SYSFATAL << "TcpConnection::handleWrite";
-    }
-    sendBuffer_.retrieve(len);
-    if (sendBuffer_.getReadableBytes() == 0) {
-        channel_->disableWrite();
-        writeCompleteCallback_(shared_from_this());
-        if (disconnecting_) {
-            shutdownInLoop();
+    if (channel_->isWriting()) {
+        ssize_t len =
+            ::write(connSocket_->getFd(), sendBuffer_.beginOfReadableBytes(),
+                    sendBuffer_.getReadableBytes());
+        LOG_TRACE << "TcpConnection::handleWrite write " << len << " bytes";
+        if (len >= 0) {
+            sendBuffer_.retrieve(len);
+        } else {
+            LOG_SYSERROR << "TcpConnection::handleWrite";
+        }
+
+        if (sendBuffer_.getReadableBytes() == 0) {
+            channel_->disableWrite();
+            writeCompleteCallback_(shared_from_this());
+            if (disconnecting_) {
+                shutdownInLoop();
+            }
+        } else {
+            LOG_TRACE << "TcpConnection::handleWrite "
+                      << sendBuffer_.getReadableBytes()
+                      << " bytes that should be sent was remained";
         }
     } else {
-        LOG_TRACE << "TcpConnection::handleWrite "
-                  << sendBuffer_.getReadableBytes()
-                  << " bytes that should be sent was remained";
+        LOG_TRACE
+            << "TcpConnection::handleWrite write channel has been disabled";
     }
 }

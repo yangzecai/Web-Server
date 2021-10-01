@@ -11,10 +11,10 @@
 namespace log {
 
 thread_local char t_errBuf[64];
-const char* strerror()
+const char* strerror(int saveErrno)
 {
-    assert(errno);
-    return strerror_r(errno, t_errBuf, sizeof(t_errBuf));
+    assert(saveErrno);
+    return strerror_r(saveErrno, t_errBuf, sizeof(t_errBuf));
 }
 
 LogLevel g_logLevel = LogLevel::INFO;

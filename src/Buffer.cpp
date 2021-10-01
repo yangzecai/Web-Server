@@ -14,7 +14,7 @@ ssize_t Buffer::writeFromFd(int fd)
     vec[1].iov_len = sizeof extrabuf;
     const ssize_t n = readv(fd, vec, 2);
     if (n < 0) {
-        LOG_FATAL << "Buffer::writeFromFd";
+        LOG_SYSERROR << "Buffer::writeFromFd";
     } else if (static_cast<size_t>(n) <= writableLen) {
         writePos_ += n;
     } else {

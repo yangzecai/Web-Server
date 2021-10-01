@@ -8,7 +8,18 @@
 #include <cassert>
 #include <chrono>
 
+#include <signal.h>
+
 thread_local EventLoop* EventLoop::loopInThisThread_ = nullptr;
+
+class IgnoreSigPipe {
+public:
+    IgnoreSigPipe() {
+        ::signal(SIGPIPE, SIG_IGN);
+    }
+};
+
+IgnoreSigPipe ignoreSigPipe;
 
 EventLoop::EventLoop()
     : threadId_(std::this_thread::get_id())

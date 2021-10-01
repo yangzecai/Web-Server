@@ -19,8 +19,6 @@ void onConnection(const TcpConnectionPtr& conn)
     printf("onConnection(): new connection from %s\n",
            conn->getClientAddr().getAddressStr().c_str());
     conn->send(message1);
-    conn->send(message2);
-    conn->shutdown();
 }
 
 void onClose(const TcpConnectionPtr& conn)
@@ -39,7 +37,8 @@ void onMessage(const TcpConnectionPtr& conn, Buffer& recvBuffer)
 
 void onWriteComplete(const TcpConnectionPtr& conn)
 {
-    printf("onWriteComplete() write completement\n");
+    // printf("onWriteComplete()\n");
+    conn->send(message1);
 }
 
 int main(int argc, char* argv[])
