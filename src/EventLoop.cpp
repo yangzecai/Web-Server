@@ -108,7 +108,6 @@ void EventLoop::queueInLoop(const CallbackFunc& cb)
 void EventLoop::addChannel(Channel* channel)
 {
     assert(channel->getOwnerLoop() == this);
-    assertInOwningThread();
     poller_->addChannel(channel);
 }
 void EventLoop::updateChannel(Channel* channel)
@@ -120,7 +119,6 @@ void EventLoop::updateChannel(Channel* channel)
 void EventLoop::removeChannel(Channel* channel)
 {
     assert(channel->getOwnerLoop() == this);
-    assertInOwningThread();
     poller_->removeChannel(channel);
 }
 

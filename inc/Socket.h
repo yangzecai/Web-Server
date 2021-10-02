@@ -24,7 +24,7 @@ public:
     int accept(Address* clientAddr) { return acceptOrDie(clientAddr); }
     void connect(const Address& addr) { connectOrDie(addr); }
     void close();
-    void shutdownWrite() { shutdownOrDie(SHUT_WR); }
+    void shutdownWrite() { shutdown(SHUT_WR); }
 
     void setNonblock(bool on);
     void setReuseAddr(bool on);
@@ -35,7 +35,7 @@ public:
     bool isValid() { return fd_ != -1; }
 
     int getSocketError();
-    
+
 private:
     void swap(Socket& rhs) noexcept;
 
@@ -45,7 +45,7 @@ private:
     int acceptOrDie(Address* clientAddr);
     void connectOrDie(const Address& addr);
     void closeOrDie();
-    void shutdownOrDie(int how);
+    void shutdown(int how);
     void setsockoptOrDie(int level, int optname, bool on);
 
     int fd_;

@@ -69,6 +69,7 @@ int main(int argc, char* argv[])
     server.setWriteCompleteCallback(onWriteComplete);
     server.setCloseCallback(onClose);
     server.setMessageCallback(onMessage);
+    server.setThreadNum(1);
     server.start();
 
     loop.loop();

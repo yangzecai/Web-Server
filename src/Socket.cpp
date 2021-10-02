@@ -134,10 +134,10 @@ void Socket::connectOrDie(const Address& addr)
     }
 }
 
-void Socket::shutdownOrDie(int how)
+void Socket::shutdown(int how)
 {
     if (::shutdown(fd_, how) != 0) {
-        LOG_SYSFATAL << "Socket::shutdownOrDie";
+        LOG_SYSERROR << "Socket::shutdown";
     }
 }
 

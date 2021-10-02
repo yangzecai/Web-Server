@@ -10,6 +10,7 @@ class Address;
 class Socket;
 class TcpConnection;
 class Acceptor;
+class EventLoopThreadPool;
 
 class TcpServer {
 public:
@@ -26,9 +27,12 @@ public:
 
     void start();
 
+    void setThreadNum(int num);
+
 private:
     void addConnection(int connfd, const Address& clientAddr);
     void removeConnection(const TcpConnectionPtr& connPtr);
+    void removeConnectionInLoop(const TcpConnectionPtr& connPtr);
 
     EventLoop* loop_;
     std::unique_ptr<Acceptor> acceptor_;
@@ -37,6 +41,7 @@ private:
     CloseCallback closeCallback_;
     WriteCompleteCallback writeCompleteCallback_;
     std::set<TcpConnectionPtr> connections_;
+    std::unique_ptr<EventLoopThreadPool> threadPool_;
 };
 
 inline void TcpServer::setConnectionCallback(const ConnectionCallback& cb)

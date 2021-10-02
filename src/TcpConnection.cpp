@@ -142,10 +142,11 @@ void TcpConnection::handleWrite()
         } else {
             LOG_SYSERROR << "TcpConnection::handleWrite";
         }
-
         if (sendBuffer_.getReadableBytes() == 0) {
             channel_->disableWrite();
-            writeCompleteCallback_(shared_from_this());
+            if (writeCompleteCallback_) {
+                writeCompleteCallback_(shared_from_this());
+            }
             if (disconnecting_) {
                 shutdownInLoop();
             }
