@@ -22,7 +22,7 @@ public:
     void bind(const Address& addr) { bindOrDie(addr); }
     void listen() { listenOrDie(); }
     int accept(Address* clientAddr) { return acceptOrDie(clientAddr); }
-    void connect(const Address& addr) { connectOrDie(addr); }
+    int connect(const Address& addr);
     void close();
     void shutdownWrite() { shutdown(SHUT_WR); }
 
@@ -36,6 +36,8 @@ public:
 
     int getSocketError();
 
+    int release();
+
 private:
     void swap(Socket& rhs) noexcept;
 
@@ -43,7 +45,6 @@ private:
     void bindOrDie(const Address& addr);
     void listenOrDie();
     int acceptOrDie(Address* clientAddr);
-    void connectOrDie(const Address& addr);
     void closeOrDie();
     void shutdown(int how);
     void setsockoptOrDie(int level, int optname, bool on);

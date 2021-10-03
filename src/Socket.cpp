@@ -45,6 +45,15 @@ Socket& Socket::operator=(Socket&& rhs)
     return *this;
 }
 
+int Socket::connect(const Address& addr)
+{
+    if (::connect(fd_, addr.getSockAddr(), addr.getSockLen()) != 0) {
+        LOG_SYSERROR << "Socket::connect";
+        return -1;
+    }
+    return 0;
+}
+
 void Socket::close()
 {
     if (::close(fd_) < 0) {
@@ -127,13 +136,6 @@ int Socket::acceptOrDie(Address* clientAddr)
     return clientFd;
 }
 
-void Socket::connectOrDie(const Address& addr)
-{
-    if (::connect(fd_, addr.getSockAddr(), addr.getSockLen()) != 0) {
-        LOG_SYSFATAL << "Socket::connectOrDie";
-    }
-}
-
 void Socket::shutdown(int how)
 {
     if (::shutdown(fd_, how) != 0) {
@@ -158,4 +160,11 @@ int Socket::getSocketError()
     } else {
         return optval;
     }
+}
+
+int Socket::release()
+{
+    int saveFd = fd_;
+    fd_ = -1;
+    return saveFd;
 }
