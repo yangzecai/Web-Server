@@ -36,7 +36,8 @@ std::string IPv4AddressImpl::getAddressStr() const
     char buf[32];
     inet_ntop(AF_INET, &addr_.sin_addr, buf, sizeof(buf));
     size_t hostLen = std::strlen(buf);
-    std::snprintf(buf + hostLen, sizeof(buf) - hostLen, ":%u", addr_.sin_port);
+    std::snprintf(buf + hostLen, sizeof(buf) - hostLen, ":%u",
+                  ::ntohs(addr_.sin_port));
     return buf;
 }
 
