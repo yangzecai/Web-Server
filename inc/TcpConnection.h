@@ -12,6 +12,7 @@ class EventLoop;
 
 class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
     friend class TcpServer;
+    friend class TcpClient;
 
 public:
     TcpConnection(EventLoop* loop, int connfd, const Address& addr);

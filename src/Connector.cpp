@@ -80,6 +80,7 @@ void Connector::retry()
 
 void Connector::handleWrite()
 {
+    // FIXME: 判断自连接
     loop_->assertInOwningThread();
 
     removeChannel();
