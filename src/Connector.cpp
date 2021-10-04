@@ -6,12 +6,18 @@
 
 #include <unistd.h>
 
+const std::chrono::milliseconds Connector::kInitRetryTime_ =
+    std::chrono::milliseconds(500);
+const std::chrono::milliseconds Connector::kMaxRetryTime_ =
+    std::chrono::seconds(30);
+
 Connector::Connector(EventLoop* loop, const Address& serverAddr)
     : loop_(loop)
     , serverAddr_(serverAddr)
     , channel_(nullptr)
     , newConnCallback_()
     , socket_(nullptr)
+    , retryDelayTime_(kInitRetryTime_)
 {
 }
 
@@ -46,25 +52,47 @@ void Connector::connect()
     loop_->runInLoop(std::bind(&Connector::connectInLoop, this));
 }
 
+void Connector::removeChannel()
+{
+    assert(channel_ != nullptr);
+    channel_->disableAll();
+    loop_->removeChannel(channel_.get());
+    loop_->queueInLoop([this]() { channel_.reset(nullptr); });
+}
+
+int Connector::releaseSocket()
+{
+    assert(socket_ != nullptr);
+    int fd = socket_->release();
+    socket_.reset(nullptr);
+    return fd;
+}
+
+void Connector::retry()
+{
+    LOG_INFO << "Connector::retry retry connecting to "
+             << serverAddr_.getAddressStr() << " in " << retryDelayTime_.count()
+             << "ms";
+    loop_->runAfter(retryDelayTime_,
+                    std::bind(&Connector::connectInLoop, this));
+    retryDelayTime_ = std::min(retryDelayTime_ * 2, kMaxRetryTime_);
+}
+
 void Connector::handleWrite()
 {
     loop_->assertInOwningThread();
 
-    channel_->disableAll();
-    loop_->removeChannel(channel_.get());
-    loop_->queueInLoop([this]() { channel_.reset(nullptr); });
+    removeChannel();
 
     int err = socket_->getSocketError();
-    LOG_TRACE << "Connector::handleWrite err = " << err;
-    int fd = socket_->release();
-    socket_.reset(nullptr);
-
     if (err) {
         LOG_ERROR << "Connector::handleWrite " << log::strerror(err);
-        // FIXME: retry
+        socket_.reset(nullptr);
+        retry();
         return;
     }
 
+    int fd = releaseSocket();
     if (newConnCallback_) {
         newConnCallback_(fd);
     } else {

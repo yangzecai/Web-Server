@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Socket.h"
 #include "Address.h"
+#include "Socket.h"
 
+#include <chrono>
 #include <functional>
 
 class EventLoop;
@@ -24,15 +25,21 @@ public:
     void connect();
 
 private:
-    void connectInLoop();
+    static const std::chrono::milliseconds kInitRetryTime_;
+    static const std::chrono::milliseconds kMaxRetryTime_;
 
+    void connectInLoop();
     void handleWrite();
+    void removeChannel();
+    int releaseSocket();
+    void retry();
 
     EventLoop* loop_;
     Address serverAddr_;
     std::unique_ptr<Channel> channel_;
     NewConnCallback newConnCallback_;
     std::unique_ptr<Socket> socket_;
+    std::chrono::milliseconds retryDelayTime_;
 };
 
 inline void Connector::setNewConnCallback(const NewConnCallback& cb)
