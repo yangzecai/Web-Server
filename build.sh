@@ -13,7 +13,7 @@ then
     exit -1
 fi
 
-make
+make -j8
 
 tmp=$?
 if [ ${tmp} -ne 0 ]

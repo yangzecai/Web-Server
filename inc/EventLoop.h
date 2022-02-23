@@ -9,8 +9,8 @@
 
 class Poller;
 class Channel;
-class PendingFuncQueue;
 class TimerQueue;
+class Waker;
 
 class EventLoop {
 public:
@@ -44,14 +44,17 @@ public:
 private:
     void abortNotInOwningThread();
     void wakeup();
+    void callPendingFunc();
 
     std::thread::id threadId_;
     bool looping_;
     std::atomic<bool> quit_;
     std::unique_ptr<Poller> poller_;
     std::unique_ptr<TimerQueue> timerQueue_;
-    std::unique_ptr<PendingFuncQueue> funcQueue_;
+    std::unique_ptr<Waker> waker_;
     bool callingPendingFunc_;
+    std::mutex mutex_; // for funcQueue_
+    std::vector<CallbackFunc> funcQueue_;
 
     static const int kPollTimeoutMs = 10000;
     static thread_local EventLoop* loopInThisThread_;

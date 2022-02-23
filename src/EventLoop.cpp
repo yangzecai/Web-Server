@@ -1,9 +1,9 @@
 #include "EventLoop.h"
 #include "Channel.h"
 #include "Log.h"
-#include "PendingFuncQueue.h"
 #include "Poller.h"
 #include "TimerQueue.h"
+#include "Waker.h"
 
 #include <cassert>
 #include <chrono>
@@ -14,9 +14,7 @@ thread_local EventLoop* EventLoop::loopInThisThread_ = nullptr;
 
 class IgnoreSigPipe {
 public:
-    IgnoreSigPipe() {
-        ::signal(SIGPIPE, SIG_IGN);
-    }
+    IgnoreSigPipe() { ::signal(SIGPIPE, SIG_IGN); }
 };
 
 IgnoreSigPipe ignoreSigPipe;
@@ -27,8 +25,10 @@ EventLoop::EventLoop()
     , quit_(false)
     , poller_(std::make_unique<Poller>(this))
     , timerQueue_(std::make_unique<TimerQueue>(this))
-    , funcQueue_(std::make_unique<PendingFuncQueue>(this))
+    , waker_(std::make_unique<Waker>(this))
     , callingPendingFunc_(false)
+    , mutex_()
+    , funcQueue_()
 {
     LOG_TRACE << "EventLoop is created";
     if (loopInThisThread_ != nullptr) {
@@ -56,7 +56,7 @@ void EventLoop::loop()
             channel->handleEvent();
         }
         callingPendingFunc_ = true;
-        funcQueue_->callPendingFunc();
+        callPendingFunc();
         callingPendingFunc_ = false;
     }
     looping_ = false;
@@ -99,7 +99,10 @@ void EventLoop::runInLoop(const CallbackFunc& cb)
 
 void EventLoop::queueInLoop(const CallbackFunc& cb)
 {
-    funcQueue_->enqueue(cb);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        funcQueue_.push_back(cb);
+    }
     if (!isInOwningThread() || callingPendingFunc_) {
         wakeup();
     }
@@ -136,5 +139,19 @@ void EventLoop::abortNotInOwningThread()
 
 void EventLoop::wakeup()
 {
-    funcQueue_->notify();
+    waker_->wakeup();
+}
+
+void EventLoop::callPendingFunc()
+{
+    std::vector<CallbackFunc> processingFuncQueue;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        processingFuncQueue.swap(funcQueue_);
+    }
+    callingPendingFunc_ = true;
+    for (auto& func : processingFuncQueue) {
+        func();
+    }
+    callingPendingFunc_ = false;
 }
