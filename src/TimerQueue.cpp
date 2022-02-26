@@ -2,6 +2,7 @@
 #include "EventLoop.h"
 #include "Log.h"
 #include "Timer.h"
+#include "TimerId.h"
 
 #include <algorithm>
 #include <vector>
@@ -9,20 +10,12 @@
 #include <sys/timerfd.h>
 #include <unistd.h>
 
-bool TimerQueue::TimerPtrCmp::operator()(const TimerPtr& lhs,
-                                         const TimerPtr& rhs) const
-{
-    return *lhs < *rhs;
-}
-
 TimerQueue::TimerQueue(EventLoop* loop)
     : loop_(loop)
     , timerfd_(createTimerfdOrDie())
     , channel_(timerfd_, loop)
     , timers_()
-    , curTime_(std::make_unique<Timer>(
-          []() {}, std::chrono::high_resolution_clock::now(),
-          std::chrono::seconds(0)))
+    , curTime_(std::chrono::high_resolution_clock::now())
 {
     channel_.setReadCallback(std::bind(&TimerQueue::handleRead, this));
     channel_.enableRead();
@@ -36,7 +29,7 @@ TimerQueue::~TimerQueue()
 
 void TimerQueue::updateCurTime()
 {
-    curTime_->updateExpiration(std::chrono::high_resolution_clock::now());
+    curTime_ = std::chrono::high_resolution_clock::now();
 }
 
 void TimerQueue::readTimerfd()
@@ -49,24 +42,21 @@ void TimerQueue::readTimerfd()
     }
 }
 
-const TimerQueue::TimePoint& TimerQueue::getCurTime() const
-{
-    return curTime_->getExpiration();
-}
-
-const TimerQueue::TimePoint& TimerQueue::getNextExpiration() const
+TimerQueue::TimePoint TimerQueue::getNextExpiration() const
 {
     assert(!timers_.empty());
-    return timers_.begin()->get()->getExpiration();
+    return timers_.begin()->second->getExpiration();
 }
 
 std::vector<TimerQueue::TimerPtr> TimerQueue::getExpiredAndRemove()
 {
     std::vector<TimerPtr> expired;
-    auto end = timers_.upper_bound(curTime_);
-    assert(end == timers_.end() || *curTime_ < **end);
+    std::pair<TimePoint, TimerPtr> node(curTime_ + std::chrono::nanoseconds(1),
+                                        nullptr);
+    auto end = timers_.upper_bound(node);
+    assert(end == timers_.end() || curTime_ < end->second->getExpiration());
     for (auto iter = timers_.begin(); iter != end;) {
-        expired.emplace_back(std::move(timers_.extract(iter++).value()));
+        expired.emplace_back(std::move(timers_.extract(iter++).value().second));
     }
     return expired;
 }
@@ -77,7 +67,7 @@ itimerspec TimerQueue::getIntervalFromNowToNextExpiration() const
     static const uint32_t kNanoPerSec = 1000UL * 1000 * 1000;
 
     assert(!timers_.empty());
-    auto interval = getNextExpiration() - getCurTime();
+    auto interval = getNextExpiration() - curTime_;
     interval = interval < minInterval ? minInterval : interval;
 
     itimerspec newValue;
@@ -97,23 +87,26 @@ void TimerQueue::resetTimer()
     }
 }
 
-void TimerQueue::addTimerInLoop(const TimerCallback& cb, const TimePoint& tp,
-                                const TimeInterval& ti)
+void TimerQueue::addTimerInLoop(TimerPtr timer)
 {
     loop_->assertInOwningThread();
-    if (timers_.empty() || tp < getNextExpiration()) {
-        timers_.insert(std::make_unique<Timer>(cb, tp, ti));
+    if (timers_.empty() || timer->getExpiration() < getNextExpiration()) {
+        timers_.emplace(timer->getExpiration(), std::move(timer));
         updateCurTime();
         resetTimer();
     } else {
-        timers_.insert(std::make_unique<Timer>(cb, tp, ti));
+        timers_.emplace(timer->getExpiration(), std::move(timer));
     }
 }
 
-void TimerQueue::addTimer(const TimerCallback& cb, const TimePoint& tp,
-                          const TimeInterval& ti)
+TimerId TimerQueue::addTimer(const TimerCallback& cb, TimePoint tp,
+                             TimeInterval ti)
 {
-    loop_->runInLoop(std::bind(&TimerQueue::addTimerInLoop, this, cb, tp, ti));
+    TimerPtr timer = std::make_shared<Timer>(cb, tp, ti);
+    TimerId timerId(timer);
+    loop_->runInLoop(
+        std::bind(&TimerQueue::addTimerInLoop, this, timer));
+    return timerId;
 }
 
 void TimerQueue::handleRead()
@@ -126,8 +119,9 @@ void TimerQueue::handleRead()
     for (size_t i = 0; i < expired.size(); ++i) {
         expired[i]->callTimerCallback();
         if (expired[i]->isRepeated()) {
-            expired[i]->updateExpiration(getCurTime());
-            timers_.insert(std::move(expired[i]));
+            expired[i]->updateExpiration(curTime_);
+            TimePoint expiration = expired[i]->getExpiration();
+            timers_.emplace(expiration, std::move(expired[i]));
         }
     }
     resetTimer();

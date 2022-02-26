@@ -22,7 +22,7 @@ public:
     }
 
     const TimePoint& getExpiration() const { return expiration_; }
-    void updateExpiration(const TimePoint&);
+    void updateExpiration(TimePoint current);
     void callTimerCallback() { callback_(); }
     bool isRepeated() const { return repeat_; }
 

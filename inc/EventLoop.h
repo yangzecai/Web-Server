@@ -1,5 +1,7 @@
 #pragma once
 
+#include "TimerId.h"
+
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -11,6 +13,7 @@ class Poller;
 class Channel;
 class TimerQueue;
 class Waker;
+class TimerId;
 
 class EventLoop {
 public:
@@ -27,9 +30,9 @@ public:
     void loop();
     void quit();
 
-    void runAt(const TimePoint& time, const CallbackFunc& cb);
-    void runAfter(const TimeInterval& delay, const CallbackFunc& cb);
-    void runEvery(const TimeInterval& interval, const CallbackFunc& cb);
+    TimerId runAt(TimePoint time, const CallbackFunc& cb);
+    TimerId runAfter(TimeInterval delay, const CallbackFunc& cb);
+    TimerId runEvery(TimeInterval interval, const CallbackFunc& cb);
 
     void runInLoop(const CallbackFunc& cb);
     void queueInLoop(const CallbackFunc& cb);

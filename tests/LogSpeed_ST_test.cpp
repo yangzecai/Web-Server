@@ -38,5 +38,5 @@ int main(int argc, char* argv[])
     bool longLog = argc > 1;
 
     bench(longLog);
-    LOG_FATAL << "test fatal";
+    // LOG_FATAL << "test fatal";
 }

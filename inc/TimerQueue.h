@@ -11,13 +11,14 @@
 class EventLoop;
 class Channel;
 class Timer;
+class TimerId;
 
 class TimerQueue {
 public:
     using TimePoint = std::chrono::high_resolution_clock::time_point;
     using TimeInterval = std::chrono::nanoseconds;
     using TimerCallback = std::function<void()>;
-    using TimerPtr = std::unique_ptr<Timer>;
+    using TimerPtr = std::shared_ptr<Timer>;
 
     TimerQueue(EventLoop* loop);
     ~TimerQueue();
@@ -25,30 +26,23 @@ public:
     TimerQueue(const TimerQueue&) = delete;
     TimerQueue& operator=(const TimerQueue&) = delete;
 
-    void addTimer(const TimerCallback& cb, const TimePoint& tp,
-                  const TimeInterval& ti);
+    TimerId addTimer(const TimerCallback& cb, TimePoint tp,
+                     TimeInterval ti);
 
 private:
     int createTimerfdOrDie() const;
     void handleRead();
     void updateCurTime();
     void readTimerfd();
-    const TimePoint& getCurTime() const;
-    const TimePoint& getNextExpiration() const;
+    TimePoint getNextExpiration() const;
     std::vector<TimerPtr> getExpiredAndRemove();
     itimerspec getIntervalFromNowToNextExpiration() const;
     void resetTimer();
-    void addTimerInLoop(const TimerCallback& cb, const TimePoint& tp,
-                        const TimeInterval& ti);
-
-    class TimerPtrCmp {
-    public:
-        bool operator()(const TimerPtr& lhs, const TimerPtr& rhs) const;
-    };
+    void addTimerInLoop(TimerPtr timer);
 
     EventLoop* loop_;
     int timerfd_;
     Channel channel_;
-    std::multiset<TimerPtr, TimerPtrCmp> timers_;
-    TimerPtr curTime_;
+    std::set<std::pair<TimePoint, TimerPtr>> timers_;
+    TimePoint curTime_;
 };

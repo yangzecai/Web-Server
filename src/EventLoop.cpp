@@ -71,20 +71,21 @@ void EventLoop::quit()
     }
 }
 
-void EventLoop::runAt(const TimePoint& time, const CallbackFunc& cb)
+TimerId EventLoop::runAt(TimePoint time, const CallbackFunc& cb)
 {
-    timerQueue_->addTimer(cb, time, std::chrono::nanoseconds(0));
+    return timerQueue_->addTimer(cb, time, std::chrono::nanoseconds(0));
 }
 
-void EventLoop::runAfter(const TimeInterval& delay, const CallbackFunc& cb)
+TimerId EventLoop::runAfter(TimeInterval delay, const CallbackFunc& cb)
 {
-    timerQueue_->addTimer(cb, std::chrono::high_resolution_clock::now() + delay,
-                          std::chrono::nanoseconds(0));
+    return timerQueue_->addTimer(
+        cb, std::chrono::high_resolution_clock::now() + delay,
+        std::chrono::nanoseconds(0));
 }
 
-void EventLoop::runEvery(const TimeInterval& interval, const CallbackFunc& cb)
+TimerId EventLoop::runEvery(TimeInterval interval, const CallbackFunc& cb)
 {
-    timerQueue_->addTimer(
+    return timerQueue_->addTimer(
         cb, std::chrono::high_resolution_clock::now() + interval, interval);
 }
 

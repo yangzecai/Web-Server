@@ -9,7 +9,7 @@ Timer::Timer(const TimerCallback& cb, const TimePoint& expiration,
 {
 }
 
-void Timer::updateExpiration(const TimePoint& timepoint)
+void Timer::updateExpiration(TimePoint current)
 {
-    expiration_ = timepoint + interval_;
+    expiration_ = current + interval_;
 }
