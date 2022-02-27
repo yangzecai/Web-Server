@@ -26,8 +26,8 @@ public:
     TimerQueue(const TimerQueue&) = delete;
     TimerQueue& operator=(const TimerQueue&) = delete;
 
-    TimerId addTimer(const TimerCallback& cb, TimePoint tp,
-                     TimeInterval ti);
+    TimerId addTimer(const TimerCallback& cb, TimePoint tp, TimeInterval ti);
+    void removeTimer(const TimerId& timerid);
 
 private:
     int createTimerfdOrDie() const;
@@ -39,6 +39,7 @@ private:
     itimerspec getIntervalFromNowToNextExpiration() const;
     void resetTimer();
     void addTimerInLoop(TimerPtr timer);
+    void removeTimerInLoop(const TimerId& timerid);
 
     EventLoop* loop_;
     int timerfd_;

@@ -90,12 +90,13 @@ void TimerQueue::resetTimer()
 void TimerQueue::addTimerInLoop(TimerPtr timer)
 {
     loop_->assertInOwningThread();
+    TimePoint expiration = timer->getExpiration();
     if (timers_.empty() || timer->getExpiration() < getNextExpiration()) {
-        timers_.emplace(timer->getExpiration(), std::move(timer));
+        timers_.emplace(expiration, std::move(timer));
         updateCurTime();
         resetTimer();
     } else {
-        timers_.emplace(timer->getExpiration(), std::move(timer));
+        timers_.emplace(expiration, std::move(timer));
     }
 }
 
@@ -104,9 +105,32 @@ TimerId TimerQueue::addTimer(const TimerCallback& cb, TimePoint tp,
 {
     TimerPtr timer = std::make_shared<Timer>(cb, tp, ti);
     TimerId timerId(timer);
-    loop_->runInLoop(
-        std::bind(&TimerQueue::addTimerInLoop, this, timer));
+    loop_->runInLoop(std::bind(&TimerQueue::addTimerInLoop, this, timer));
     return timerId;
+}
+
+void TimerQueue::removeTimerInLoop(const TimerId& timerid)
+{
+    TimerPtr timer = timerid.timer_.lock();
+    if (timer == nullptr) {
+        return;
+    }
+    TimePoint expiration = timer->getExpiration();
+    std::pair<TimePoint, TimerPtr> node =
+        std::make_pair(expiration, std::move(timer));
+    if (node == *timers_.begin()) {
+        timers_.erase(node);
+        void updateCurTime();
+        void resetTimer();
+    } else {
+        timers_.erase(node);
+    }
+}
+
+void TimerQueue::removeTimer(const TimerId& timerid)
+{
+    loop_->queueInLoop(
+        std::bind(&TimerQueue::removeTimerInLoop, this, timerid));
 }
 
 void TimerQueue::handleRead()

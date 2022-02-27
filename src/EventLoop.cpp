@@ -89,6 +89,11 @@ TimerId EventLoop::runEvery(TimeInterval interval, const CallbackFunc& cb)
         cb, std::chrono::high_resolution_clock::now() + interval, interval);
 }
 
+void EventLoop::cancel(const TimerId& timerid)
+{
+    timerQueue_->removeTimer(timerid);
+}
+
 void EventLoop::runInLoop(const CallbackFunc& cb)
 {
     if (isInOwningThread()) {

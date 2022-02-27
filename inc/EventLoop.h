@@ -33,6 +33,7 @@ public:
     TimerId runAt(TimePoint time, const CallbackFunc& cb);
     TimerId runAfter(TimeInterval delay, const CallbackFunc& cb);
     TimerId runEvery(TimeInterval interval, const CallbackFunc& cb);
+    void cancel(const TimerId& timerid);
 
     void runInLoop(const CallbackFunc& cb);
     void queueInLoop(const CallbackFunc& cb);
