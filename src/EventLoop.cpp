@@ -155,6 +155,7 @@ void EventLoop::callPendingFunc()
         std::lock_guard<std::mutex> lock(mutex_);
         processingFuncQueue.swap(funcQueue_);
     }
+    LOG_TRACE << processingFuncQueue.size() << " pending functions";
     callingPendingFunc_ = true;
     for (auto& func : processingFuncQueue) {
         func();

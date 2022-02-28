@@ -32,7 +32,8 @@ void Channel::handleEvent()
             errorCallback_();
         }
     }
-    if (revent_ & (EPOLLIN)) {
+    // FIXME: EPOLLHUP trigger busy loop
+    if (revent_ & EPOLLIN) {
         if (readCallback_) {
             readCallback_();
         }

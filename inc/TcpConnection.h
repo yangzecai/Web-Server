@@ -19,6 +19,8 @@ public:
     TcpConnection(EventLoop* loop, int connfd, const Address& addr);
     ~TcpConnection();
 
+    EventLoop* getLoop() const { return loop_; }
+
     TcpConnection(const TcpConnection&) = delete;
     TcpConnection& operator=(const TcpConnection&) = delete;
 
@@ -33,7 +35,17 @@ public:
 
     void shutdown();
 
+    void close();
+
 private:
+    enum State
+    {
+        CONNECTING,
+        CONNECTED,
+        DISCONNECTING,
+        DISCONNECTED
+    };
+
     void handleRead();
     void handleError();
     void handleClose();
@@ -48,6 +60,8 @@ private:
 
     void shutdownInLoop();
 
+    void closeInLoop();
+
     EventLoop* loop_;
     std::unique_ptr<Socket> connSocket_;
     Address clientAddr_;
@@ -58,7 +72,7 @@ private:
     WriteCompleteCallback writeCompleteCallback_;
     Buffer recvBuffer_;
     Buffer sendBuffer_;
-    std::atomic<bool> disconnecting_;
+    State state_;
 };
 
 inline void TcpConnection::setConnectionCallback(const ConnectionCallback& cb)
