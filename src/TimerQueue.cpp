@@ -87,7 +87,7 @@ void TimerQueue::resetTimer()
     }
 }
 
-void TimerQueue::addTimerInLoop(TimerPtr timer)
+void TimerQueue::addTimerInLoop(const TimerPtr& timer)
 {
     loop_->assertInOwningThread();
     TimePoint expiration = timer->getExpiration();

@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <cstring>
+
 class Buffer {
 public:
     Buffer();
@@ -33,6 +35,9 @@ public:
     void finishAlloc(size_t len) { writePos_ += len; }
 
     void shrink(size_t reserve);
+
+    const char* find(const char* begin, size_t len) const;
+    const char* find(const char* begin) const;
 
     ssize_t writeFromFd(int fd);
 
@@ -136,4 +141,17 @@ inline void Buffer::makeSpace(size_t len)
         writePos_ = readPos_ + readable;
         assert(readable == getReadableBytes());
     }
+}
+
+inline const char* Buffer::find(const char* begin, size_t len) const
+{
+    const char* ret = std::search(beginOfReadableBytes(),
+                                  beginOfWritableBytes(), begin, begin + len);
+    return ret == beginOfWritableBytes() ? nullptr : ret;
+}
+
+inline const char* Buffer::find(const char* begin) const
+{
+    size_t len = std::strlen(begin);
+    return find(begin, len);
 }

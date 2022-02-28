@@ -38,7 +38,7 @@ private:
     std::vector<TimerPtr> getExpiredAndRemove();
     itimerspec getIntervalFromNowToNextExpiration() const;
     void resetTimer();
-    void addTimerInLoop(TimerPtr timer);
+    void addTimerInLoop(const TimerPtr& timer);
     void removeTimerInLoop(const TimerId& timerid);
 
     EventLoop* loop_;

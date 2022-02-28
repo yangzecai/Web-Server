@@ -4,6 +4,7 @@
 #include "Buffer.h"
 #include "Callbacks.h"
 
+#include <atomic>
 #include <memory>
 
 class Channel;
@@ -57,7 +58,7 @@ private:
     WriteCompleteCallback writeCompleteCallback_;
     Buffer recvBuffer_;
     Buffer sendBuffer_;
-    bool disconnecting_; // FIXME: atomic
+    std::atomic<bool> disconnecting_;
 };
 
 inline void TcpConnection::setConnectionCallback(const ConnectionCallback& cb)
