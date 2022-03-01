@@ -1,7 +1,16 @@
 #include "HttpRequest.h"
-#include "../inc/Buffer.h"
+#include "Buffer.h"
 
-#include <regex>
+HttpRequest::HttpRequest()
+    : method(Method::M_INVALID)
+    , version(Version::V_INVALID)
+    , path()
+    , headers()
+    , body()
+{
+}
+
+HttpRequest::~HttpRequest() {}
 
 bool HttpRequest::parse(Buffer& buffer)
 {
@@ -17,22 +26,22 @@ std::string HttpRequest::toString() const
 
     str += "method : ";
     switch (method) {
-    case Method::INVALID:
+    case Method::M_INVALID:
         str += "INVALID";
         break;
-    case Method::GET:
+    case Method::M_GET:
         str += "GET";
         break;
-    case Method::POST:
+    case Method::M_POST:
         str += "POST";
         break;
-    case Method::HEAD:
+    case Method::M_HEAD:
         str += "HEAD";
         break;
-    case Method::PUT:
+    case Method::M_PUT:
         str += "PUT";
         break;
-    case Method::DELETE:
+    case Method::M_DELETE:
         str += "DELETE";
         break;
     }
@@ -42,10 +51,10 @@ std::string HttpRequest::toString() const
 
     str += "version : ";
     switch (version) {
-    case Version::INVALID:
+    case Version::V_INVALID:
         str += "INVALID";
         break;
-    case Version::HTTP1_1:
+    case Version::V_HTTP1_1:
         str += "HTTP/1.1";
         break;
     }
@@ -69,13 +78,19 @@ bool HttpRequest::parseRequestLine(Buffer& buffer)
 
 bool HttpRequest::parseHeaders(Buffer& buffer)
 {
-    const char* end = buffer.find("\r\n\r\n") + 2;
-    while (buffer.beginOfReadableBytes() < end) {
-        if (parseHeader(buffer) == false) {
+    while (true) {
+        const char* end = buffer.find("\r\n");
+        if (end == nullptr) {
             return false;
+        } else if (end == buffer.beginOfReadableBytes()) {
+            buffer.retrieve(2);
+            break;
+        } else {
+            if (false == parseHeader(buffer)) {
+                return false;
+            }
         }
     }
-    buffer.retrieve(2);
     return true;
 }
 
@@ -95,17 +110,17 @@ bool HttpRequest::parseMethod(Buffer& buffer)
     }
     size_t len = space - str;
     if (0 == ::strncmp(str, "GET", len)) {
-        method = Method::GET;
+        method = Method::M_GET;
     } else if (0 == ::strncmp(str, "POST", len)) {
-        method = Method::POST;
+        method = Method::M_POST;
     } else if (0 == ::strncmp(str, "HEAD", len)) {
-        method = Method::HEAD;
+        method = Method::M_HEAD;
     } else if (0 == ::strncmp(str, "PUT", len)) {
-        method = Method::PUT;
+        method = Method::M_PUT;
     } else if (0 == ::strncmp(str, "DELETE", len)) {
-        method = Method::DELETE;
+        method = Method::M_DELETE;
     } else {
-        method = Method::INVALID;
+        method = Method::M_INVALID;
         return false;
     }
     buffer.retrieve(len + 1);
@@ -134,9 +149,9 @@ bool HttpRequest::parseVersion(Buffer& buffer)
     }
     size_t len = crlf - str;
     if (0 == ::strncmp(str, "HTTP/1.1", len)) {
-        version = Version::HTTP1_1;
+        version = Version::V_HTTP1_1;
     } else {
-        version = INVALID;
+        version = V_INVALID;
         return false;
     }
     buffer.retrieve(len + 2);
@@ -152,7 +167,19 @@ bool HttpRequest::parseHeader(Buffer& buffer)
         begin == colon || crlf <= colon) {
         return false;
     }
-    headers[std::string(begin, colon)] = std::string(colon + 1, crlf);
+    const char* keyEnd = colon;
+    while (*(keyEnd - 1) == ' ') {
+        if (--keyEnd == begin) {
+            return false;
+        }
+    }
+    const char* valueBegin = colon + 1;
+    while (*valueBegin == ' ') {
+        if (++valueBegin == crlf) {
+            return false;
+        }
+    }
+    headers[std::string(begin, keyEnd)] = std::string(valueBegin, crlf);
     buffer.retrieve(crlf - begin + 2);
     return true;
 }

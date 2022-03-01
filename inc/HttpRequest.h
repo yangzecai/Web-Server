@@ -6,24 +6,27 @@ class Buffer;
 
 struct HttpRequest {
 public:
-    HttpRequest(const HttpRequest&) = delete;
-    HttpRequest& operator=(const HttpRequest&) = delete;
-
     enum Method
     {
-        INVALID,
-        GET,
-        POST,
-        HEAD,
-        PUT,
-        DELETE
+        M_INVALID,
+        M_GET,
+        M_POST,
+        M_HEAD,
+        M_PUT,
+        M_DELETE
     };
 
     enum Version
     {
-        INVALID,
-        HTTP1_1
+        V_INVALID,
+        V_HTTP1_1
     };
+
+    HttpRequest();
+    ~HttpRequest();
+
+    HttpRequest(const HttpRequest&) = delete;
+    HttpRequest& operator=(const HttpRequest&) = delete;
 
     Method method;
     Version version;

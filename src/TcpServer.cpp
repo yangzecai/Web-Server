@@ -8,12 +8,18 @@
 
 #include <memory>
 
+void defaultConnectionCallback(const TcpConnectionPtr&) {}
+void defaultMessageCallback(const TcpConnectionPtr&, Buffer& buffer) {
+    buffer.retrieveAll();
+}
+void defaultCloseCallback(const TcpConnectionPtr&) {}
+
 TcpServer::TcpServer(EventLoop* loop, const Address& addr)
     : loop_(loop)
     , acceptor_(std::make_unique<Acceptor>(loop, addr))
-    , connectionCallback_()
-    , messageCallback_()
-    , closeCallback_()
+    , connectionCallback_(defaultConnectionCallback)
+    , messageCallback_(defaultMessageCallback)
+    , closeCallback_(defaultCloseCallback)
     , writeCompleteCallback_()
     , connections_()
     , threadPool_(std::make_unique<EventLoopThreadPool>(loop))
@@ -30,9 +36,6 @@ TcpServer::~TcpServer()
 
 void TcpServer::start()
 {
-    assert(connectionCallback_ != nullptr);
-    assert(messageCallback_ != nullptr);
-    assert(closeCallback_ != nullptr);
     LOG_TRACE << "TcpServer::start";
     loop_->assertInOwningThread();
     threadPool_->start();
