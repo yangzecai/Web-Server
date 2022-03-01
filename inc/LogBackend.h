@@ -1,7 +1,7 @@
 #pragma once
 
 #include "LogAppender.h"
-#include "RingBuffer.h"
+#include "LogBuffer.h"
 
 #include <condition_variable>
 #include <mutex>
@@ -14,7 +14,7 @@ namespace log {
 
 class LogBackend {
 public:
-    static RingBuffer* getThreadBuffer();
+    static LogBuffer* getThreadBuffer();
     static void sync();
 
 private:
@@ -40,13 +40,13 @@ private:
         void active() {}
     };
 
-    static thread_local RingBuffer* t_buffer_; // TODO : 测试用智能指针速度
+    static thread_local LogBuffer* t_buffer_; // TODO : 测试用智能指针速度
     static thread_local BufferDestoryer bufferDestoryer_;
 
     LogAppender* file_; // TODO : 测试用智能指针速度
     std::thread logThread_;
     bool running_;
-    std::vector<RingBuffer*> buffers_;
+    std::vector<LogBuffer*> buffers_;
     mutable std::mutex bufVecMutex_;
     enum
     {

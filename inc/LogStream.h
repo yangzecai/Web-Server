@@ -2,7 +2,7 @@
 
 #include "Config.h"
 #include "LogBackend.h"
-#include "RingBuffer.h"
+#include "LogBuffer.h"
 
 #include <cassert>
 #include <cstring>
@@ -46,7 +46,7 @@ public:
 private:
     const char* end() const { return data_ + cap_; }
 
-    RingBuffer* buffer_;
+    LogBuffer* buffer_;
     uint32_t cap_;
     char* data_;
     char* cur_;

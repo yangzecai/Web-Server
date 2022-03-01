@@ -1,17 +1,17 @@
 #pragma once
 
-#include <functional>
 #include <cstdint>
+#include <functional>
 
-class RingBuffer {
+class LogBuffer {
 public:
     using ReadCallback = std::function<void(const char*, uint32_t)>;
 
-    RingBuffer(uint32_t cap, uint32_t tailCap);
-    ~RingBuffer() { delete[] data_; }
+    LogBuffer(uint32_t cap, uint32_t tailCap);
+    ~LogBuffer() { delete[] data_; }
 
-    RingBuffer(const RingBuffer&) = delete;
-    RingBuffer& operator=(const RingBuffer&) = delete;
+    LogBuffer(const LogBuffer&) = delete;
+    LogBuffer& operator=(const LogBuffer&) = delete;
 
     char* allocWritableSpace_unblock(uint32_t space);
     char* allocWritableSpace(uint32_t space);

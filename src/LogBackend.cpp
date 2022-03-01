@@ -7,7 +7,7 @@
 namespace log {
 
 LogBackend LogBackend::singleton;
-thread_local RingBuffer* LogBackend::t_buffer_ = nullptr;
+thread_local LogBuffer* LogBackend::t_buffer_ = nullptr;
 thread_local LogBackend::BufferDestoryer LogBackend::bufferDestoryer_;
 
 LogBackend::LogBackend()
@@ -47,7 +47,7 @@ void LogBackend::sync()
     singleton.syncCompleted_.wait(lock);
 }
 
-RingBuffer* LogBackend::getThreadBuffer()
+LogBuffer* LogBackend::getThreadBuffer()
 {
     if (!t_buffer_) {
         singleton.registerThreadBuffer();
@@ -58,7 +58,7 @@ RingBuffer* LogBackend::getThreadBuffer()
 void LogBackend::registerThreadBuffer()
 {
     using namespace std::placeholders;
-    t_buffer_ = new RingBuffer(LOG_BUF_CAP, LOG_BUF_TAIL_CAP);
+    t_buffer_ = new LogBuffer(LOG_BUF_CAP, LOG_BUF_TAIL_CAP);
     t_buffer_->setReadCallback(
         std::bind(&LogAppender::append, this->file_, _1, _2));
     std::lock_guard<std::mutex> lock(bufVecMutex_);

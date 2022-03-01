@@ -1,11 +1,11 @@
-#include "RingBuffer.h"
+#include "LogBuffer.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <thread>
 
-RingBuffer::RingBuffer(uint32_t cap, uint32_t tailCap)
+LogBuffer::LogBuffer(uint32_t cap, uint32_t tailCap)
     : data_(new char[cap + tailCap])
     , cap_(cap)
     , tailCap_(tailCap)
@@ -16,7 +16,7 @@ RingBuffer::RingBuffer(uint32_t cap, uint32_t tailCap)
     assert(cap && !(cap & (cap - 1)));
 }
 
-uint32_t RingBuffer::read(uint32_t bytes)
+uint32_t LogBuffer::read(uint32_t bytes)
 {
     bytes = std::min(bytes, getReadableBytes());
     uint32_t bytesToEnd = cap_ - getReadIndex();
@@ -31,13 +31,13 @@ uint32_t RingBuffer::read(uint32_t bytes)
     return bytes;
 }
 
-char* RingBuffer::allocWritableSpace_unblock(uint32_t space)
+char* LogBuffer::allocWritableSpace_unblock(uint32_t space)
 {
     assert(space <= tailCap_);
     return space > getWritableBytes() ? nullptr : data_ + getWriteIndex();
 }
 
-char* RingBuffer::allocWritableSpace(uint32_t space)
+char* LogBuffer::allocWritableSpace(uint32_t space)
 {
     char* ret;
     while ((ret = allocWritableSpace_unblock(space)) == nullptr) {
@@ -46,7 +46,7 @@ char* RingBuffer::allocWritableSpace(uint32_t space)
     return ret;
 }
 
-void RingBuffer::finishAlloc(uint32_t bytes)
+void LogBuffer::finishAlloc(uint32_t bytes)
 {
     assert(bytes <= tailCap_);
     if (getWriteIndex() + bytes > cap_) {
