@@ -38,7 +38,7 @@ void onMessage(const TcpConnectionPtr& conn, Buffer& recvBuffer)
 void onWriteComplete(const TcpConnectionPtr& conn)
 {
     // printf("onWriteComplete()\n");
-    conn->close();
+    conn->shutdown();
 }
 
 int main(int argc, char* argv[])

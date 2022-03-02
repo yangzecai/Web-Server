@@ -28,10 +28,7 @@ TcpConnection::TcpConnection(EventLoop* loop, int connfd, const Address& addr)
     channel_->setWriteCallback(std::bind(&TcpConnection::handleWrite, this));
 }
 
-TcpConnection::~TcpConnection()
-{
-    channel_->close();
-}
+TcpConnection::~TcpConnection() {}
 
 void TcpConnection::sendInLoop(const char* str, size_t len)
 {
@@ -55,9 +52,9 @@ void TcpConnection::send(const char* str, size_t len)
         sendInLoop(str, len);
     } else {
         loop_->queueInLoop(
-            std::bind((void (TcpConnection::*)(const std::string&)) &
-                            TcpConnection::sendInLoop,
-                        this, std::string(str, len)));
+            std::bind((void(TcpConnection::*)(const std::string&)) &
+                          TcpConnection::sendInLoop,
+                      this, std::string(str, len)));
     }
 }
 
@@ -67,9 +64,9 @@ void TcpConnection::send(std::string&& str)
         sendInLoop(str);
     } else {
         loop_->queueInLoop(
-            std::bind((void (TcpConnection::*)(const std::string&)) &
-                            TcpConnection::sendInLoop,
-                        this, std::move(str)));
+            std::bind((void(TcpConnection::*)(const std::string&)) &
+                          TcpConnection::sendInLoop,
+                      this, std::move(str)));
     }
 }
 
@@ -82,10 +79,12 @@ void TcpConnection::send(const std::string& str)
 void TcpConnection::shutdownInLoop()
 {
     loop_->assertInOwningThread();
-    state_ = DISCONNECTING;
-    if (!channel_->isWriting()) {
-        LOG_TRACE << "TcpConnection::shutdownInLoop";
-        connSocket_->shutdownWrite();
+    if (state_ == CONNECTED) {
+        state_ = DISCONNECTING;
+        if (!channel_->isWriting()) {
+            LOG_TRACE << "TcpConnection::shutdownInLoop";
+            connSocket_->shutdownWrite();
+        }
     }
 }
 
@@ -129,6 +128,7 @@ void TcpConnection::handleClose()
     loop_->assertInOwningThread();
     LOG_TRACE << "TcpConnection::handleClose";
     channel_->disableAll();
+    channel_->close();
     state_ = DISCONNECTED;
     closeCallback_(shared_from_this());
 }

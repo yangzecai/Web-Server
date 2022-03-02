@@ -47,7 +47,7 @@ int main()
     log::setLevel(log::TRACE);
     EventLoop loop;
     HttpServer server(&loop, Address::createIPv4Address(9981));
-    server.setThreadNum(1);
+    server.setThreadNum(2);
     server.setRequestCallback(onRequest);
     server.start();
     loop.loop();

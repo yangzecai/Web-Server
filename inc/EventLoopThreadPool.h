@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 class EventLoop;
 class EventLoopThread;
@@ -17,6 +17,7 @@ public:
     void setThreadNum(int num) { threadNum_ = num; }
     void start();
     EventLoop* getNextLoop();
+    const std::vector<EventLoop*>& getLoops() const { return loops_; }
 
 private:
     using EventLoopThreadPtr = std::unique_ptr<EventLoopThread>;

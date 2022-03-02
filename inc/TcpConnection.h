@@ -4,6 +4,7 @@
 #include "Buffer.h"
 #include "Callbacks.h"
 
+#include <any>
 #include <atomic>
 #include <memory>
 
@@ -36,6 +37,9 @@ public:
     void shutdown();
 
     void close();
+
+    void setContext(const std::any& context) { context_ = context; }
+    const std::any& getContext() const { return context_; }
 
 private:
     enum State
@@ -73,6 +77,7 @@ private:
     Buffer recvBuffer_;
     Buffer sendBuffer_;
     State state_;
+    std::any context_;
 };
 
 inline void TcpConnection::setConnectionCallback(const ConnectionCallback& cb)
